@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         南+提取标题和链接
 // @namespace    south-plus
-// @version      0.3
+// @version      0.4
 // @author       15x15
 // @match        *://*.spring-plus.net/*
 // @grant        none
