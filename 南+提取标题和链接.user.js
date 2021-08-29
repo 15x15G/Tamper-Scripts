@@ -97,6 +97,9 @@ function soTab_init() {
     .righttip:hover {
     opacity: 0.9;
     }
+    .btn{
+    cursor:pointer;
+    }
     `;
     dom_body.appendChild(dom);
 
