@@ -1,0 +1,10 @@
+[Adblock Plus 2.0]
+! Title: self-adb
+! 
+! Last Modified: %timestamp%
+! Expires: 4 days (update frequency)
+! Homepage: https://github.com/15x15G/Tamper-Scripts/
+! License: 
+! 参考https://github.com/easylist/easylistchina/blob/master/easylistchina.txt
+!-----------------------General advert blocking filters-----------------------!
+pawoo.net##div[style="position: relative; padding-top: 51%; overflow: hidden;"]
