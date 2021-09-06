@@ -20,7 +20,7 @@
 
 // @date                10/30/2015
 // @modified            05/04/2017
-// @version             1.4.1
+// @version             1.4.2
 // ==/UserScript==
 
 
@@ -34,12 +34,12 @@
         var href = location.href;
         if (href0 != href)
         {
-            var oldDOM = document.getElementById('soTab');
-            if (oldDOM)
-            {
-                oldDOM.parentNode.removeChild(oldDOM);
+            //var oldDOM = document.getElementById('soTab');
+            if (document.getElementById('soTab'))
+            {;}
+            else{
+                soTab_init();
             }
-            soTab_init();
             href0 = href;
         }
         setTimeout(ajax_fixer, 2222);
@@ -89,17 +89,18 @@
         for (i = 0; i < kind.length; i++)
         {
             if (!kind[i])
-                continue;
+            {continue;}
             else if (Array.isArray(kind[i]))
             { //数组形式
-                for (var j = 0; j < kind[i].length; j++)
+                for (var j = 0; j < kind[i].length; j++){
                     if (location.href.indexOf(kind[i][j]) >= 0)
                     {
                         kindID = i;
                         break;
                     }
+                }
                 if (kindID != -1)
-                    break;
+                {break;}
             }
             else if (location.href.indexOf(kind[i]) >= 0)
             {
@@ -111,7 +112,7 @@
         if (siteID == 1 && kindID == -1)
         {
             if (location.href.indexOf('q=') >= 0)
-                kindID = 0;
+            {kindID = 0;}
         }
         if (kindID == -1)
         {
@@ -127,40 +128,40 @@
         if (kindID == 0)
         { //normal
             link = ["https://www.baidu.com/s?wd=",
-                "https://www.google.com/search?q="
-            ];
+                    "https://www.google.com/search?q="
+                   ];
         }
         else if (kindID == 1)
         { //pic
             link = ["https://image.baidu.com/search/index?tn=baiduimage&word=",
-                "https://www.google.com/search?tbm=isch&q="
-            ];
+                    "https://www.google.com/search?tbm=isch&q="
+                   ];
         }
         else if (kindID == 2)
         { //zhidao
             link = ["https://zhidao.baidu.com/search?word=",
-                ""
-            ];
+                    ""
+                   ];
         }
         else if (kindID == 3)
         { //video
             link = ["https://v.baidu.com/v?ie=utf-8&word=",
-                "https://www.google.com/search?tbm=vid&q="
-            ];
+                    "https://www.google.com/search?tbm=vid&q="
+                   ];
         }
         else if (kindID == 4)
         { //xueshu
             link = ["https://xueshu.baidu.com/s?wd=",
-                "https://scholar.google.com/scholar?q="
-            ];
+                    "https://scholar.google.com/scholar?q="
+                   ];
         }
 
         //获取搜索词(get通用)
         var key;
         if (siteID == 0)
-            key = (location.search.indexOf("wd=") >= 0) ? "wd" : "word";
+        {key = (location.search.indexOf("wd=") >= 0) ? "wd" : "word";}
         else
-            key = "q";
+        {key = "q";}
         var tmp = location.href.split(key + "=", 2);
         if (tmp.length <= 1)
         {
@@ -201,7 +202,8 @@ p.soTab_title {
 .soTab a {
 	color: #0cf;
 }`
-        dom_body.appendChild(dom);
+        //dom_body.appendChild(dom);
+        document.getElementsByTagName("html")[0].appendChild(dom);
 
         //生成切换框
         dom = document.createElement('div');
@@ -216,8 +218,8 @@ p.soTab_title {
         }
         dom.innerHTML = str + '</p>';
         dom.className = "soTab soTab_site" + siteID + " soTab_kind" + kindID;
-        dom_body.appendChild(dom);
-
+        //dom_body.appendChild(dom);
+        document.getElementsByTagName("html")[0].appendChild(dom);
     }
 
 
