@@ -18,3 +18,6 @@ pawoo.net##div.pawoo-trend-tags
 ||dlswbr.baidu.com/heicha/mw/abclite-*-s.js$script
 !不明
 ||static.zhihu.com/heifetz/main.signflow.*.js$script,domain=www.zhihu.com
+! 诸葛
+zhuge.min.js$script
+zhuge.js$script
