@@ -1,0 +1,127 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SPEECH\Voices\Tokens]
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SPEECH\Voices\Tokens\TTS_MS_EN-US_ZIRA_11.0]
+@="Microsoft Zira Desktop - English (United States)"
+"409"="Microsoft Zira Desktop - English (United States)"
+"CLSID"="{C64501F6-E6E6-451f-A150-25D0839BC510}"
+"LangDataPath"=hex(2):25,00,53,00,79,00,73,00,74,00,65,00,6d,00,52,00,6f,00,6f,\
+  00,74,00,25,00,5c,00,53,00,70,00,65,00,65,00,63,00,68,00,5c,00,45,00,6e,00,\
+  67,00,69,00,6e,00,65,00,73,00,5c,00,54,00,54,00,53,00,5c,00,65,00,6e,00,2d,\
+  00,55,00,53,00,5c,00,4d,00,53,00,54,00,54,00,53,00,4c,00,6f,00,63,00,45,00,\
+  6e,00,55,00,53,00,2e,00,64,00,61,00,74,00,00,00
+"VoicePath"=hex(2):25,00,53,00,79,00,73,00,74,00,65,00,6d,00,52,00,6f,00,6f,00,\
+  74,00,25,00,5c,00,53,00,70,00,65,00,65,00,63,00,68,00,5c,00,45,00,6e,00,67,\
+  00,69,00,6e,00,65,00,73,00,5c,00,54,00,54,00,53,00,5c,00,65,00,6e,00,2d,00,\
+  55,00,53,00,5c,00,4d,00,31,00,30,00,33,00,33,00,5a,00,49,00,52,00,00,00
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SPEECH\Voices\Tokens\TTS_MS_EN-US_ZIRA_11.0\Attributes]
+"Age"="Adult"
+"Gender"="Female"
+"Language"="409"
+"Name"="Microsoft Zira Desktop"
+"SharedPronunciation"=""
+"Vendor"="Microsoft"
+"Version"="11.0"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SPEECH\Voices\Tokens\TTS_MS_ZH-CN_HONGYU_11.0]
+@="Microsoft Hongyu Mobile - Chinese (Simplified)"
+"804"="Microsoft Hongyu Mobile - Chinese (Simplified)"
+"CLSID"="{179F3D56-1B0B-42B2-A962-59B7EF59FE1B}"
+"LangDataPath"=hex(2):25,00,77,00,69,00,6e,00,64,00,69,00,72,00,25,00,5c,00,53,\
+  00,70,00,65,00,65,00,63,00,68,00,5f,00,4f,00,6e,00,65,00,43,00,6f,00,72,00,\
+  65,00,5c,00,45,00,6e,00,67,00,69,00,6e,00,65,00,73,00,5c,00,54,00,54,00,53,\
+  00,5c,00,7a,00,68,00,2d,00,43,00,4e,00,5c,00,4d,00,53,00,54,00,54,00,53,00,\
+  4c,00,6f,00,63,00,5a,00,68,00,43,00,4e,00,2e,00,64,00,61,00,74,00,00,00
+"VoicePath"=hex(2):25,00,77,00,69,00,6e,00,64,00,69,00,72,00,25,00,5c,00,53,00,\
+  70,00,65,00,65,00,63,00,68,00,5f,00,4f,00,6e,00,65,00,43,00,6f,00,72,00,65,\
+  00,5c,00,45,00,6e,00,67,00,69,00,6e,00,65,00,73,00,5c,00,54,00,54,00,53,00,\
+  5c,00,7a,00,68,00,2d,00,43,00,4e,00,5c,00,4d,00,32,00,30,00,35,00,32,00,48,\
+  00,6f,00,6e,00,67,00,79,00,75,00,00,00
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SPEECH\Voices\Tokens\TTS_MS_ZH-CN_HONGYU_11.0\Attributes]
+"Age"="Adult"
+"Gender"="Female"
+"Language"="804"
+"Name"="Microsoft Hongyu Mobile"
+"SharedPronunciation"=""
+"SpLexicon"="{0655E396-25D0-11D3-9C26-00C04F8EF87C}"
+"Vendor"="Microsoft"
+"Version"="11.0"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SPEECH\Voices\Tokens\TTS_MS_ZH-CN_HUIHUI_11.0]
+@="Microsoft Huihui Desktop - Chinese (Simplified)"
+"804"="Microsoft Huihui Desktop - Chinese (Simplified)"
+"CLSID"="{179F3D56-1B0B-42B2-A962-59B7EF59FE1B}"
+"LangDataPath"=hex(2):25,00,77,00,69,00,6e,00,64,00,69,00,72,00,25,00,5c,00,53,\
+  00,70,00,65,00,65,00,63,00,68,00,5f,00,4f,00,6e,00,65,00,43,00,6f,00,72,00,\
+  65,00,5c,00,45,00,6e,00,67,00,69,00,6e,00,65,00,73,00,5c,00,54,00,54,00,53,\
+  00,5c,00,7a,00,68,00,2d,00,43,00,4e,00,5c,00,4d,00,53,00,54,00,54,00,53,00,\
+  4c,00,6f,00,63,00,5a,00,68,00,43,00,4e,00,2e,00,64,00,61,00,74,00,00,00
+"VoicePath"=hex(2):25,00,77,00,69,00,6e,00,64,00,69,00,72,00,25,00,5c,00,53,00,\
+  70,00,65,00,65,00,63,00,68,00,5f,00,4f,00,6e,00,65,00,43,00,6f,00,72,00,65,\
+  00,5c,00,45,00,6e,00,67,00,69,00,6e,00,65,00,73,00,5c,00,54,00,54,00,53,00,\
+  5c,00,7a,00,68,00,2d,00,43,00,4e,00,5c,00,4d,00,32,00,30,00,35,00,32,00,48,\
+  00,75,00,69,00,68,00,75,00,69,00,00,00
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SPEECH\Voices\Tokens\TTS_MS_ZH-CN_HUIHUI_11.0\Attributes]
+"Age"="Adult"
+"Gender"="Female"
+"Language"="804"
+"Name"="Microsoft Huihui Desktop"
+"SharedPronunciation"=""
+"SpLexicon"="{0655E396-25D0-11D3-9C26-00C04F8EF87C}"
+"Vendor"="Microsoft"
+"Version"="11.0"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SPEECH\Voices\Tokens\TTS_MS_ZH-CN_KANGKANG_11.0]
+@="Microsoft Kangkang Desktop - Chinese (Simplified)"
+"804"="Microsoft Kangkang Desktop - Chinese (Simplified)"
+"CLSID"="{179F3D56-1B0B-42B2-A962-59B7EF59FE1B}"
+"LangDataPath"=hex(2):25,00,77,00,69,00,6e,00,64,00,69,00,72,00,25,00,5c,00,53,\
+  00,70,00,65,00,65,00,63,00,68,00,5f,00,4f,00,6e,00,65,00,43,00,6f,00,72,00,\
+  65,00,5c,00,45,00,6e,00,67,00,69,00,6e,00,65,00,73,00,5c,00,54,00,54,00,53,\
+  00,5c,00,7a,00,68,00,2d,00,43,00,4e,00,5c,00,4d,00,53,00,54,00,54,00,53,00,\
+  4c,00,6f,00,63,00,5a,00,68,00,43,00,4e,00,2e,00,64,00,61,00,74,00,00,00
+"VoicePath"=hex(2):25,00,77,00,69,00,6e,00,64,00,69,00,72,00,25,00,5c,00,53,00,\
+  70,00,65,00,65,00,63,00,68,00,5f,00,4f,00,6e,00,65,00,43,00,6f,00,72,00,65,\
+  00,5c,00,45,00,6e,00,67,00,69,00,6e,00,65,00,73,00,5c,00,54,00,54,00,53,00,\
+  5c,00,7a,00,68,00,2d,00,43,00,4e,00,5c,00,4d,00,32,00,30,00,35,00,32,00,4b,\
+  00,61,00,6e,00,67,00,6b,00,61,00,6e,00,67,00,00,00
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SPEECH\Voices\Tokens\TTS_MS_ZH-CN_KANGKANG_11.0\Attributes]
+"Age"="Adult"
+"Gender"="Male"
+"Language"="804"
+"Name"="Microsoft Kangkang Desktop"
+"SharedPronunciation"=""
+"SpLexicon"="{0655E396-25D0-11D3-9C26-00C04F8EF87C}"
+"Vendor"="Microsoft"
+"Version"="11.0"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SPEECH\Voices\Tokens\TTS_MS_ZH-CN_YAOYAO_11.0]
+@="Microsoft Yaoyao Desktop - Chinese (Simplified)"
+"804"="Microsoft Yaoyao Desktop - Chinese (Simplified)"
+"CLSID"="{179F3D56-1B0B-42B2-A962-59B7EF59FE1B}"
+"LangDataPath"=hex(2):25,00,77,00,69,00,6e,00,64,00,69,00,72,00,25,00,5c,00,53,\
+  00,70,00,65,00,65,00,63,00,68,00,5f,00,4f,00,6e,00,65,00,43,00,6f,00,72,00,\
+  65,00,5c,00,45,00,6e,00,67,00,69,00,6e,00,65,00,73,00,5c,00,54,00,54,00,53,\
+  00,5c,00,7a,00,68,00,2d,00,43,00,4e,00,5c,00,4d,00,53,00,54,00,54,00,53,00,\
+  4c,00,6f,00,63,00,5a,00,68,00,43,00,4e,00,2e,00,64,00,61,00,74,00,00,00
+"VoicePath"=hex(2):25,00,77,00,69,00,6e,00,64,00,69,00,72,00,25,00,5c,00,53,00,\
+  70,00,65,00,65,00,63,00,68,00,5f,00,4f,00,6e,00,65,00,43,00,6f,00,72,00,65,\
+  00,5c,00,45,00,6e,00,67,00,69,00,6e,00,65,00,73,00,5c,00,54,00,54,00,53,00,\
+  5c,00,7a,00,68,00,2d,00,43,00,4e,00,5c,00,4d,00,32,00,30,00,35,00,32,00,59,\
+  00,61,00,6f,00,79,00,61,00,6f,00,00,00
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SPEECH\Voices\Tokens\TTS_MS_ZH-CN_YAOYAO_11.0\Attributes]
+"Age"="Adult"
+"Gender"="Female"
+"Language"="804"
+"Name"="Microsoft Yaoyao Desktop"
+"SharedPronunciation"=""
+"SpLexicon"="{0655E396-25D0-11D3-9C26-00C04F8EF87C}"
+"Vendor"="Microsoft"
+"Version"="11.0"
+
