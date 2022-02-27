@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         href-to-cn
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.4
 // @author       15x15
 // @match        */en-us/*
 // @match        */ja-jp/*
@@ -15,7 +15,7 @@
     function registerMenuCommand()
     {
         GM_registerMenuCommand('zh-cn', () =>{
-            window.location.href = window.location.href.replace(/\/ja-jp\/|\/en-us\//,'/zh-cn/'))
+            window.location.href = window.location.href.replace(/\/ja-jp\/|\/en-us\//,'/zh-cn/')
         });
     }
     registerMenuCommand();
