@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         SoulPlusBanList
-// @name:cn      南+黑名单
+// @name:zh      南+黑名单
 // @description
 // @namespace    15x15
 // @author       15x15
