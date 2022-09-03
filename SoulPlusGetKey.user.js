@@ -6,7 +6,7 @@
 // @author       15x15
 // @version      0.5
 // @icon         https://www.google.com/s2/favicons?domain=spring-plus.net
-// @match        *://*.spring-plus.net/*
+// @match        *://*.spring-plus.net/read.php*
 // @grant        none
 // ==/UserScript==
 
@@ -103,9 +103,11 @@
     cursor:pointer;
     }
     `;
-    dom_body.appendChild(dom);
+    dom_body?.appendChild(dom);
 
-    var str = document.getElementById("subject_tpc").innerText;
+    var str = document.getElementById("subject_tpc")?.innerText;
+
+    if (!str || !dom_body) return;
 
     //生成切换框2
     dom = document.createElement("div");
