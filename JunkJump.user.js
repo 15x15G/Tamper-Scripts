@@ -1,9 +1,10 @@
 // ==UserScript==
-// @name         翻译垃圾再利用
-// @namespace    inqb.ga
-// @version      0.5.0
-// @description  跳转到源地址
+// @name         JunkJump
+// @name:zh      翻译垃圾再利用
+// @description
+// @namespace    15x15
 // @author       no1xsyzy 15x15
+// @version      0.5.1
 // @icon         data:image/svg+xml,<svg width="16" height="16" xmlns="http://www.w3.org/2000/svg"><path fill="%23444" d="M8 3.1l1.4 2.2-1.6 1.1 1.3.3 2.8.6.6-2.7.4-1.4-1.8 1.1-2-3.3H6.9L4.3 5.3l1.7 1zM16 12l-2.7-4.3-1.7 1 2 3.3H11v-2l-3 3 3 3v-2h3.7zM2.4 12l1.4-2.3 1.7 1.1-.9-4.2-2.8.7-1.3.3 1.6 1L0 12l1.3 2H7v-2z"/></svg>
 // @match        *://*.stackexchange.com/search?q=*
 // @match        *://stackoverflow.com/search?q=*
