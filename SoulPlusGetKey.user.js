@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         SoulPlusGetKey
-// @name:cn      南+提取标题和链接
+// @name:zh      南+提取标题和链接
 // @description
 // @namespace    15x15
 // @author       15x15

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         SoulPlusAutoJumpPicWall
-// @name:cn      南+自动跳转图墙模式
+// @name:zh      南+自动跳转图墙模式
 // @description
 // @namespace    15x15
 // @author       15x15

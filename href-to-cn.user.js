@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         href-to-cn
-// @name:cn      语言跳转菜单
+// @name:zh      语言跳转菜单
 // @description
 // @namespace    15x15
 // @author       15x15
