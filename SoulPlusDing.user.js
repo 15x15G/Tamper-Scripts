@@ -4,7 +4,8 @@
 // @description  发帖时自动勾选新回复通知按钮，增强通知显示效果
 // @namespace    15x15
 // @author       sl,15x15
-// @version      0.1
+// @version      0.1.1
+// @icon         https://www.google.com/s2/favicons?domain=spring-plus.net
 // @match        https://*.white-plus.net/*
 // @match        https://*.south-plus.net/*
 // @match        https://*.spring-plus.net/*
