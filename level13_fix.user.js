@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         level13_fix
+// @description  fix level13 hidden element
 // @namespace    15x15
 // @author       15x15
 // @version      0.2
-// @description  fix level13 hidden element
 // @match        https://nroutasuo.github.io/level13/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=nroutasuo.github.io
 // @grant        GM_addElement
