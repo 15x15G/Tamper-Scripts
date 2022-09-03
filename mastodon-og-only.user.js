@@ -4,8 +4,8 @@
 // @description
 // @namespace    15x15
 // @author       15x15
-// @version      0.3
-// @include      /^https?://.*\..*/\@.*$/
+// @version      0.4
+// @match        *://*/@*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=mastodon.social
 // @grant        GM_registerMenuCommand
 // ==/UserScript==
