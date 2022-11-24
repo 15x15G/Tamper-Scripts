@@ -1,21 +1,33 @@
 // ==UserScript==
-// @name         HVtoolBox 1.0.6
+// @name         HVtoolBox 1.0.14
 // @namespace    hentaiverse.org
 // @description  Multi-bazaaring, salvaging, repairing, moogling, filter, tweaks and extra features. Based on holy_demon's Item Manager script and Superlatanium's Percentile Ranges script.
 // @match        *://*.hentaiverse.org/*
-// @icon         https://hentaiverse.org/y/favicon.png
 // @start-at     document-end
-// @version      1.0.6
+// @version      1.0.14
 // @grant        none
 // @author       f4tal (forums.e-hentai.org/index.php?showuser=1237490)
 // ==/UserScript==
-(function(){
-var $d = document, $w = window, $lc = localStorage, $l = $d.location.href, $url = document.location.protocol + "//" + document.location.host;
+
+if(!document.getElementById('csp')&&!document.getElementById('showequip')||document.getElementById('textlog')) {
+    // the script will not running on the blank page or battle page
+    return;
+}
+else {
+    HVtoolBox(); /* Run the script. If the script not running on equips page, add // at the beginning of this line
+    // below line may solve the problems cause by sandbox, but may cause other problems, and the script will not able to use GM function
+    /*//*/ document.head.appendChild(document.createElement('script')).innerHTML = HVtoolBox.toString() + 'HVtoolBox();'; /* inject the script into the document. */
+}
+
+function HVtoolBox(){
+var version = "1.0.14";
+
+var $d = document, $w = "undefined"==typeof(unsafeWindow)?window:unsafeWindow, $lc = localStorage, $l = $d.location.href, $url = document.location.protocol + "//" + document.location.host + document.location.pathname.replace(/\/$/,'');
 function $r() {$w.location.href = $l;}
 
 function $i(n,p) {return ((p||$d).getElementById(n));}
 function $q(n,p) {return ((p||$d).querySelector(n));}
-function $qa(n,p) {return ((p||$d).querySelectorAll(n));}
+function $qa(n,p) {return Array.from((p||$d).querySelectorAll(n));}
 
 function $e(n,a,p) {
     var e = $d.createElement(n);
@@ -76,6 +88,21 @@ function $f(u,d,o) {
         d(f.contentDocument.body);
     },false);
     f.src = u;
+}
+function $p(url, data, callback) {
+    var form = new FormData();
+    for (var i in data) {
+        form.append(i, data[i]);
+    }
+    var r = new XMLHttpRequest();
+    r.open("POST", url, true);
+    r.responseType = "document";
+    r.onreadystatechange = function() {
+        if (callback && r.readyState == 4 && r.status == 200) {
+            callback(r.response);
+        }
+    };
+    r.send(form);
 }
 var $m = {
     show : function(h,t,f) {
@@ -152,7 +179,7 @@ var $a = {
                     var answer;
                     if (id) {
                         if (!$q("#battle_main", a.response)) {
-                            answer = ($q("#messagebox", a.response)) ? $q("#messagebox", a.response).textContent.replace(/System Message|Salvaged|Received:?|Snowflake has blessed you with (an item|some of her power)!|Hit Space Bar to offer another item like this.|\s\s/gi,"").trim() : "Done";
+                            answer = ($q("#messagebox_outer", a.response)) ? $q("#messagebox_outer", a.response).textContent.replace(/System Message|Salvaged|Returned|Received:?|Snowflake has blessed you with (an item|some of her power)!|Hit Space Bar to offer another item like this.|\s\s/gi,"").replace('( it for','(Salvaged it for').trim() : "Done";
                         } else {
                             answer = "You are in Battle! Finish it first.";
                         }
@@ -164,12 +191,12 @@ var $a = {
                         $r();
                     } else if (forms[iter].type === "shrine") {
                         var m = answer, regex;
-                        if (!$tb.log[id]) { // todo:split in two
-                            $tb.log[id] = {na: forms[iter].name,c:0,pab:0,hath:0,ed:0,le:0,cr:{tot:0,vig:0,fin:0,swi:0,fort:0,cun:0,kno:0,fla:0,fro:0,lig:0,tem:0,dev:0,cor:0},ave:0,sup:0,exq:0,mag:0,leg:0,pee:0};
-                        }
+                        var na = forms[iter].name;
                         if (/Average|Superior|Exquisite|Magnificent|Legendary|Peerless/i.test(m)) {
-                            $tb.log[id].t = "tro";
-                            $tb.log[id].c += 1;
+                            if (!$tb.tro[na]) {
+                                $tb.tro[na] = {id:id,c:0,ave:0,sup:0,exq:0,mag:0,leg:0,pee:0};
+                            }
+                            $tb.tro[na].c += 1;
                             var mapTrophy = [
                                 {q: "Average", s: "ave"},
                                 {q: "Superior", s: "sup"},
@@ -181,13 +208,19 @@ var $a = {
                             for (var i = 0; i < 6; i++) {
                                 regex = new RegExp (mapTrophy[i].q,"i");
                                 if (regex.test(m)) {
-                                    $tb.log[id][mapTrophy[i].s] += 1;
+                                    $tb.tro[na][mapTrophy[i].s] += 1;
                                     break;
                                 }
                             }
-                        } else {
-                            $tb.log[id].t = "art";
-                            $tb.log[id].c += 1;
+                        } else if (m == "Done") {
+                            if ($i("results")) {
+                                $i("results").dispatchEvent(new CustomEvent("resMod", {"detail": {"id": id, "message": "Nothing happen, maybe you have run out of stock or the script need to update."}}));
+                            }
+                        } else if (/Crystal|Elixir|Hath|Energy|One|By|Increased/i.test(m)) {
+                            if (!$tb.art[na]) {
+                                $tb.art[na] = {id:id,c:0,pab:0,hath:0,ed:0,le:0,cr:{tot:0,vig:0,fin:0,swi:0,fort:0,cun:0,kno:0,fla:0,fro:0,lig:0,tem:0,dev:0,cor:0}};
+                            }
+                            $tb.art[na].c += 1;
                             var mapArtifact = [
                                 {q: "Crystal", s: "tot"},
                                 {q: "Elixir", s: "le"},
@@ -213,48 +246,50 @@ var $a = {
                                 regex = new RegExp (mapArtifact[o].q,"i");
                                 if (regex.test(m)) {
                                     if (o === 0) {
-                                        $tb.log[id].cr[mapArtifact[o].s] += 1;
+                                        $tb.art[na].cr[mapArtifact[o].s] += 1;
+                                        for (var p = 0; p < 12; p++) {
+                                            regex = new RegExp (mapArtifactCr[p].q,"i");
+                                            if (regex.test(m)) {
+                                                $tb.art[na].cr[mapArtifactCr[p].s] += 1;
+                                                break;
+                                            }
+                                        }
                                     } else {
-                                        $tb.log[id][mapArtifact[o].s] += 1;
+                                        $tb.art[na][mapArtifact[o].s] += 1;
                                     }
                                     break;
                                 }
                             }
-                            for (var p = 0; p < 12; p++) {
-                                regex = new RegExp (mapArtifactCr[p].q,"i");
-                                if (regex.test(m)) {
-                                    $tb.log[id].cr[mapArtifactCr[p].s] += 1;
-                                    break;
-                                }
-                            }
-
                         }
                         $tb.sync();
                     } else if (forms[iter].type === "moogle") {
-                        if (mtrv === "COD") {
+                        if (answer != "Done") {
+                            mtrv = "Abort";
+                        } else if (mtrv === "COD") {
                             mtrv = "CODdone";
                         } else if (mtrv === "SEND") {
                             mtrv = "SENDdone";
-                            cntMod = new CustomEvent("cntMod", { "detail": {"count": taskDone}  });
+                            cntMod = new CustomEvent("cntMod", { "detail": {"count": taskDone} });
                             $i("resultsST").dispatchEvent(cntMod);
                         } else if (typeof mtrv === "number") {
                             taskDone += 1;
                             mtrv += 1;
                         }
+                        $i("resultsST").dispatchEvent(new CustomEvent("mtrv"));
                         return true;
                     }
                     taskDone += 1;
-                    cntMod = new CustomEvent("cntMod", { "detail": {"count": taskDone}  });
+                    cntMod = new CustomEvent("cntMod", { "detail": {"count": taskDone} });
                     $i("resultsST").dispatchEvent(cntMod);
                 }
             } else if (a.readyState === 2) {
                 a.abort();
-                $w.setTimeout(function() {
+                setTimeout(function() {
                     $a.post(iter);
                 }, +$tb.set.ajaxwait);
             }
         };
-        $w.setTimeout(function() {
+        setTimeout(function() {
             a.send(param);
         }, +$tb.set.ajaxwait);
         if (iter === lastIter && lastIter < forms.length - 1 && !forms[iter].sync && lastIter - lastSent < +$tb.set.ajaxnum) {
@@ -281,14 +316,32 @@ function $t(v,u) {
         $g(u, function(r){t[v] = $q(temp, r).value;});
     }
 }
+function getStorage(key) {
+    try {
+        if ($lc.getItem(key) === undefined) return;
+        return JSON.parse($lc.getItem(key));
+    } catch(e){
+        console.error('HVtoolBox read storage error:', key, e);
+    }
+}
+function setStorage(key, value) {
+    var str = JSON.stringify(value);
+    if ($lc.getItem(key) != str) {
+        $lc.setItem(key, str);
+    }
+}
 
 var $tb;
+var isekai = location.pathname.match(/\/isekai\//i)?'_isekai':'';
+var world = $i('world_readout')&&$i('world_readout').textContent;
 function createToolBox() {
-    $tb = ($lc.getItem("HVtoolBox") !== null)? JSON.parse($lc.getItem("HVtoolBox")) : {
+    var defaultSettings = {
         lastRE : "",
         prices : {},
         names : {},
-        log : {},
+        tro: {},
+        art: {},
+        cha: {},
         mon: {gift:0,bind:0,sla:0,bal:0,isa:0,des:0,foc:0,fri:0,pro:0,fle:0,bar:0,num:0,ele:0,hea:0,dem:0,cur:0,ear:0,sur:0,nif:0,mjo:0,fre:0,hei:0,fen:0,dam:0,sto:0,def:0,eat:0,bor:0,chi:0,wak:0,ble:0,war:0,rac:0,che:0,tur:0,fox:0,ox:0,owl:0,wardin:0,neg:0,cp:0,sf:0,ra:0,dmm:0,low:0,lc:0,ll:0,lm:0,lw:0,mid:0,mc:0,ml:0,mm:0,mw:0,high:0,hc:0,hl:0,hm:0,hw:0},
         set : {
             wide: false,
@@ -296,6 +349,11 @@ function createToolBox() {
             done: "none",
             drag: true,
 
+            equipch: true,
+            equipin: true,
+            equipshop: true,
+            equipiw: true,
+            equipforge: true,
             locked: true,
             sellall: false,
             rename: "big",
@@ -303,26 +361,36 @@ function createToolBox() {
             showpabs: true,
             jenga: false,
 
+            itemin: true,
+            itemshop: true,
+            itemshrine: true,
+            selectAll: true,
             figure: true,
             rare: true,
+            obsoletes: "Vase|Bubble|Grue|Clover|Rabbit|Vorpal|Jiggy|Chainsaw|Wirt|Shark-Mounted|BFG9000|Railgun|Flame Thrower|Nuke|ASHPD|Smart Bomb|Tesla Coil|Pony Sled|Lantern|Mayan|Fiber-Optic|Snowman|Annoying Dog|Iridium Sprinkler|Ponyfeather|Snowflake|Altcoin|Ancient|Chicken|Mysterious Box|Solstice|Stuffers|Shimmering|Tenbora's Box|Battery|RealPervert|Raptor|Egg|Gift Pony|Faux|Pegasopolis|Keeper|Crystalline|Self-Satisfaction|Six-Lock Box|One-Bit|ASIC|Reindeer|VPS|Heart Locket|Rainbow Projector|Mysterious Tooth|Grammar Nazi Armband|Abstract Wire Sculpture|Delicate Flower|Assorted Coins|Coin Collector|Iron Heart|Plague Mask|Shrine Fortune| Pot$|Coupon|Smoothie|Ponyfeather|Easter|Snowflake|Coin|Server|Ancient|Spelling|Button|Hoarded|Vaccine|Annoying|Voucher",
 
             inldif: true,
             inlset: true,
             inlper: true,
             inlre: true,
 
+            showTitle: false,
+
             cred: true,
             equip: true,
-            lotshow: true,
+            lotshow: false,
             lotweapon: "",
             lotarmor: "",
 
             mmcod: true,
             mmpr: true,
-            mmalert: true,
+            mmalert: false,
+            mmsearch: true,
+            mmthide: false,
 
-            arena: true,
+            arena: false,
 
+            prable: true,
             prold: true,
             pralert: true,
 
@@ -331,7 +399,38 @@ function createToolBox() {
             hic: ["red","","","","","","","","",""],
             hib: ["","#ddddFF","","","","","","","",""],
             his: ["","","rgba(250,150,80,1)","","","","","","",""],
-            css: ""
+            css: "",
+
+            // initial set values below was move into here in version 1.0.10, which was used to call the restoreDefaults before
+            "butequip": ["moogle","bazaar","salvage","repair","reforge","iw","unlock","storage","list"],
+            "butitem": ["moogle","bazaar","shrine","list"],
+            "ajaxnum": 1,
+            "ajaxwait": 333,
+            "ajaxmoogle": 333,
+            "corcheck": 600,
+            "sal0": 850,
+            "sal1": 400,
+            "sal2": 100,
+            "sal3": 80,
+            "sal4": 7000,
+            "sal5": 350,
+            "sal6": 90,
+            "sal7": 75,
+            "sal8": 350,
+            "sal9": 300,
+            "sal10": 60,
+            "sal11": 75,
+            "sal12": 17000,
+            "sal13": 450,
+            "sal14": 100,
+            "sal15": 88,
+            "sal16": 180,
+            "lwc" : 10000,
+            "lsc" : 10000,
+            "lac" : 10000,
+            "pwc" : 100000,
+            "psc" : 100000,
+            "pac" : 100000,
         },
         templates : {
             shrine: 1,
@@ -345,58 +444,103 @@ function createToolBox() {
             listmode: "node",
         }
     };
-    $lc.setItem("HVtoolBox", JSON.stringify($tb));
-    $tb.sync = function(){$lc.setItem("HVtoolBox", JSON.stringify($tb));};
-    $tb.version = "1.0.4";
+    try {
+        if (isekai!='') {
+            if ( $lc.getItem("HVtoolBox" + isekai) !== null) {
+                $tb = JSON.parse($lc.getItem("HVtoolBox" + isekai));
+            } else {
+                // first run on isekai, use setting from Persistent and reset log
+                $tb = ($lc.getItem("HVtoolBox") !== null)? JSON.parse($lc.getItem("HVtoolBox")) :defaultSettings;
+                $tb.mon = defaultSettings.mon;
+                $tb.art = {};
+                $tb.tro = {};
+                $tb.cha = {};
+                $tb.names = {};
+                $tb.prices = {};
+            }
+        } else {
+            $tb = ($lc.getItem("HVtoolBox") !== null)? JSON.parse($lc.getItem("HVtoolBox")) :defaultSettings;
+        }
+    } catch(e) {
+        if ( $lc.getItem("HVtoolBox" + isekai) !== null) $lc.setItem("HVtoolBox" + isekai + "_bk", $lc.getItem("HVtoolBox" + isekai));
+        console.error('HVtoolBox read settings error', e);
+        alert('HVtoolBox read storage settings error, will use the default settings.');
+        $tb = defaultSettings;
+    }
+
+    $tb.sync = function(){setStorage("HVtoolBox" + isekai, $tb)};
+
+    // the function restoreDefaults was used before version 1.0.10, call with arguments that now in defaultSettings.set
+    // the "0" value reset operation should be no need, but in case for bug check this function is keep here
     function restoreDefaults(n,d) {
         if ($tb.set[n] == "0" || $tb.set[n] === undefined || $tb.set[n] == "" || $tb.set[n] == "undefined") {
             $tb.set[n] = d;
         }
     }
-    var hashMapSet = [
-        {n: "butequip", d: ["moogle","bazaar","salvage","repair","reforge","iw","unlock","storage","list"]},
-        {n: "butitem", d: ["moogle","bazaar","shrine","list"]},
-        {n: "ajaxnum", d: 5},
-        {n: "ajaxwait", d: 1500},
-        {n: "ajaxmoogle", d: 250},
-        {n: "lastRE", d: Date.now() + 1830000},
-        {n: "corcheck", d: 600},
-        {n: "sal0", d: 850},
-        {n: "sal1", d: 400},
-        {n: "sal2", d: 100},
-        {n: "sal3", d: 80},
-        {n: "sal4", d: 7000},
-        {n: "sal5", d: 350},
-        {n: "sal6", d: 90},
-        {n: "sal7", d: 75},
-        {n: "sal8", d: 350},
-        {n: "sal9", d: 300},
-        {n: "sal10", d: 60},
-        {n: "sal11", d: 75},
-        {n: "sal12", d: 17000},
-        {n: "sal13", d: 450},
-        {n: "sal14", d: 100},
-        {n: "sal15", d: 88},
-        {n: "sal16", d: 180}
-        ];
-    for (var r in hashMapSet) {
-        restoreDefaults(hashMapSet[r].n, hashMapSet[r].d);
+    // reset to default settings if the storage settings missing something
+    for (var r in defaultSettings) {
+        if (!$tb[r]) $tb[r] = defaultSettings[r];
     }
-    if ($lc.getItem("HVItemHelper") !== null) {
-        var oldData = JSON.parse($lc.getItem("HVItemHelper"));
-        for (var i in oldData.price) {
-            if (oldData.price.hasOwnProperty(i)) {
-                $tb.prices[i] = oldData.price[i];
+    for (var n in defaultSettings.set) {
+        if ($tb.set[n] === undefined) $tb.set[n] = defaultSettings.set[n];
+    }
+
+    // trophies/artifacts shrine log are split into two in version 1.2.0
+    function splitLog($tb) {
+        if (!$tb.log) return;
+        var tro = {c:0,ave:0,sup:0,exq:0,mag:0,leg:0,pee:0};
+        var art = {c:0,pab:0,hath:0,ed:0,le:0};
+        var cr = {tot:0,vig:0,fin:0,swi:0,fort:0,cun:0,kno:0,fla:0,fro:0,lig:0,tem:0,dev:0,cor:0};
+        for (var id in $tb.log) {
+            var cur = $tb.log[id];
+            if (cur.t == "tro") {
+                if (!$tb.tro[cur.na]) $tb.tro[cur.na] = {id};
+                for (var it in tro) {
+                    $tb.tro[cur.na][it] = ($tb.tro[cur.na][it]||0) + cur[it];
+                }
+            }
+            else {
+                if (!$tb.art[cur.na]) $tb.art[cur.na] = {id, cr:{}};
+                for (it in art) {
+                    $tb.art[cur.na][it] = ($tb.art[cur.na][it]||0) + cur[it];
+                }
+                if (!cur.cr) continue;
+                for (it in cr) {
+                    $tb.art[cur.na].cr[it] = ($tb.art[cur.na].cr[it]||0) + cur.cr[it];
+                }
             }
         }
-        $lc.removeItem("HVItemHelper");
+        delete $tb.log;
     }
+
+    splitLog($tb);
+
+    $tb.set.arena = false; // now there is no area pager
+    $tb.set.jenga = false; // database is now offline
+    // Forcing values for sync: https://forums.e-hentai.org/index.php?s=&showtopic=209070&view=findpost&p=5828522
+    $tb.set.ajaxnum = 1;
+    if ($tb.set.ajaxwait<333) $tb.set.ajaxwait = 333;
+    if ($tb.set.ajaxmoogle<333) $tb.set.ajaxmoogle = 333;
+    $tb.version = version;
+
+    try{
+        if ($lc.getItem("HVItemHelper") !== null) {
+            var oldData = JSON.parse($lc.getItem("HVItemHelper"));
+            for (var i in oldData.price) {
+                if (oldData.price.hasOwnProperty(i)) {
+                    $tb.prices[i] = oldData.price[i];
+                }
+            }
+            $lc.removeItem("HVItemHelper");
+        }
+    }catch(e){console.error(e);}
+
     $tb.sync();
 }
 createToolBox();
 
 if ($q(".c5s")) {
-    $m.show("<h3>You are using Default Font</h3><h4>HVtoolBox will not work with Default Font Engine</h4><h4>Visit the <a href='"+$url+"?s=Character&ss=se'>in-game settings</a> and activate custom font</h4>", "big");
+    $m.show("<h3>You are using Default Font</h3><h4>HVtoolBox will not work with Default Font Engine</h4><h4>Visit the <a href='?s=Character&ss=se'>in-game settings</a> and activate custom font</h4>", "big");
     $m.but("Got it", undefined, "big");
 }
 
@@ -483,7 +627,7 @@ function itemManager() {
                     }
                 });
                 if (/\$info|\$badinfo/.test(tv)) {
-                    $g("/equip/" + cur.id + "/" + cur.key, function(r) {
+                    $g("equip/" + cur.id + "/" + cur.key, function(r) {
                         parseEquip(r.body, {}, function(item){
                             tv = tv.replace("$badinfo", item.badinfo);
                             tv = tv.replace("$info", item.info);
@@ -517,48 +661,120 @@ function itemManager() {
                     t.salv.push(salvtemp.splice(0,4));
                 }
             }
-            if (/Bazaar&ss=es|Battle&ss=iw|Forge|Character&ss=in|&equip_slot=/i.test($l)) {
-                t.gr = "equip"; t.p = $q(".equiplist"); t.c = $qa(".eqp"); t.cm = $qa(".eqp", t.p);
-            } else if (/Bazaar&ss=is|Bazaar&ss=ss|Character&ss=it/i.test($l)) {
-                t.gr = "item"; t.p = $q(".itemlist"); t.c = $qa(".itemlist tr"); t.cm = $qa("tr", t.p);
-            } else if (/Bazaar&ss=mm/i.test($l)) {
-                t.gr = "moogle"; t.p = $i("mmail_attachlist"); t.c = $qa("#mmail_attachlist > div > div:first-child"); t.cm = $qa("#mmail_attachlist > div > div:first-child");
+
+            if (/Bazaar&ss=mm/i.test($l)) {
+                if ($tb.set.mmsearch && (t.p = $q(".itemlist"))) {
+                    t.gr = "moogle"; t.cm = $qa(".itemlist tr"); t.c = t.cm.concat($qa(".equiplist .eqp"));
+                    t.cl = t.c.length; t.cml = t.cm.length;
+                    if (t.cl) {
+                        t.p.insertAdjacentHTML('beforebegin', "<div id='tb' style='position: absolute'></div>");
+                        matchOi = new RegExp($tb.set.obsoletes,'i');
+                        getIdsEquip();
+                    }
+                    else createIMB();
+                }
+                else {
+                    t.gr = "moogle"; t.p = $i("mmail_attachlist"); t.c = $qa("#mmail_attachlist > div > div:first-child"); t.cm = $qa("#mmail_attachlist > div > div:first-child");
+                    t.cl = t.c.length; t.cml = t.cm.length;
+                    createIMB();
+                }
+            } else if ((t.p = $q('.equiplist')) && (
+                ($tb.set.equipch && /s=Character&ss=eq/.test($l))
+                || ($tb.set.equipin && /s=Character&ss=in/.test($l))
+                || ($tb.set.equipshop && /s=Bazaar&ss=es/.test($l))
+                || ($tb.set.equipiw && /s=Battle&ss=iw/.test($l))
+                || ($tb.set.equipforge && /s=Forge/.test($l))
+            )) {
+                t.gr = "equip"; t.c = $qa(".eqp"); t.cm = $qa(".eqp", t.p);
+                t.cl = t.c.length; t.cml = t.cm.length;
+                getIdsEquip();
+            } else if ($qa(".itemlist") && (
+                ($tb.set.itemin && /s=Character&ss=it/.test($l))
+                || ($tb.set.itemshop && /s=Bazaar&ss=is/.test($l))
+                || ($tb.set.itemshrine && /s=Bazaar&ss=ss/.test($l))
+            )) {
+                var matchOi = new RegExp($tb.set.obsoletes, 'i');
+                t.gr = "item"; t.p = $q('.cspp'); t.c = $qa(".itemlist tr"); t.cm = $qa("tr", t.p);
+                t.cl = t.c.length; t.cml = t.cm.length;
+                getIdsItem(document);
             } else {
                 t.gr = "none";
+                t.cl = t.cml = 0;
+                createIMB();
             }
-            t.cl = t.c.length;
-            t.cml = t.cm.length;
-            function getIdsItem() {
-                $g("/?s=Bazaar&ss=mm&filter=new", function (r) {
-                    var its = $qa(".itemlist tr", r);
-                    for (var i = 0, len = its.length; i < len; i++) {
-                        var w = its[i];
-                        var we = $q("div[onmouseover]", w);
-                        t.ids[we.getAttribute("onclick").match(/set_mooglemail_item\((\d+),/)[1]] = {t: we.textContent, c: $q("td:last-child", w).textContent};
+            function getIdsItem(doc) {
+                var allIds = Object.assign({
+                    "Festival Coupon":"32998",
+                    "Shrine Fortune":"32999",
+                    "Stocking Stuffers":"30003",
+                    "Chaos Token":"9315",
+                    "Token of Blood":"9316",
+                    "Golden Lottery Ticket":"9319"
+                }, getStorage('itemIds'));
+                var ignoreItems = getStorage('ignoreItems') || [];
+                var its = $qa(".itemlist tr", doc);
+                var ignoreId = 0, newIgnores = 0, newIds = 0;
+                for (var idx = 0 ; idx < its.length; idx++) {
+                    var item = its[idx];
+                    var itemLabel = $q("div[onmouseover*='item']", item);
+                    var itemName = itemLabel.textContent,
+                        itemId = allIds[itemName] || (itemId = itemLabel.getAttribute("onclick") && (itemLabel.getAttribute("onclick").match(/\d+/))),
+                        itemCount = $q("td:last-child", item).textContent;
+                    if (!itemId) {
+                        itemId = --ignoreId; // use a fake id as placeholder so the script won't crash
+                        if (!ignoreItems.includes(itemName)) {
+                            newIgnores++;
+                        }
                     }
-                    t.ids["9315"] = {t: "Chaos Token", c: "none"};
-                    t.ids["9316"] = {t: "Token of Blood", c: "none"};
-                    t.ids["48001"]= {t: "Soul Fragment", c: "none"};
-                    t.ids["9317"] = {t: "Soul Fragment", c: "none"};
-                    t.ids["9318"] = {t: "Caffeinated Candy", c: "none"};
-                    t.ids["9319"] = {t: "Golden Lottery Ticket", c: "none"};
-                    getI();
-                });
+                    else if (t.ids[itemId]) {
+                        continue;
+                    }
+                    else if (!allIds[itemName]){
+                        allIds[itemName] = itemId.toString();
+                        newIds++;
+                    }
+                    t.ids[itemId] = {t: itemName, c: itemCount};
+                }
+                if (newIds) setStorage('itemIds', allIds);
+                // recheck ignoreItems if called with a new document
+                if (newIgnores || doc!=document) {
+                    if (/Character&ss=it/i.test(location.search) && doc==document) {
+                        // try fetch ids from Item Shop if missing id on Item Inventory, if the try fail then ignore it
+                        return $g('?s=Bazaar&ss=is', getIdsItem);
+                    }
+                    else {
+                        newIgnores = 0;
+                        for (var i in t.ids) {
+                            var name = t.ids[i].t;
+                            if (i<0) {
+                                if (allIds[name]) {
+                                    delete t.ids[i]; // means a missing id have been complete, nolonger need a fake id
+                                }
+                                else if (!ignoreItems.includes(name)) {
+                                    newIgnores++;
+                                    ignoreItems.push(name);
+                                }
+                            }
+                        }
+                        // should only happen when new type untradeable Item add in furture, or if the hentaiverse HTML update
+                        if (newIgnores) setStorage('ignoreItems', ignoreItems);
+                    }
+                }
+                getI();
             }
+
             function getIdsEquip() {
-                var h = $q("script[src^='/dynjs']");
-                $g(h.src, function (r) {
-                    var e = JSON.parse(r.substr(16, r.length - 17));
-                    if (typeof dynjs_eqstore !== "undefined") {
-                        Object.assign(e, dynjs_eqstore);
-                    }
+                if (typeof($w.dynjs_equip)!='undefined') return parseIds();
+                else $q("script[src*='/dynjs/']").onload = parseIds;
+                function parseIds(){
+                    var e = Object.assign({}, $w.dynjs_equip, $w.dynjs_eqstore);
                     for (var i in e) {
                         if (e.hasOwnProperty(i)) {
                             t.ids[i] = {d: e[i].d, k: e[i].k, t: e[i].t};
                         }
                     }
                     getI();
-                }, true);
+                }
             }
             function getI() {
                 var elem, name, elemname, id, ido, uniq, jenga = [];
@@ -568,7 +784,7 @@ function itemManager() {
                     id = +t.uidelem(elemname);
                     ido = id;
                     name = elemname.textContent;
-                    if ($tb.names[id]) {elemname.innerHTML = $tb.names[id];}
+                    if ($tb.names[id]) {elemname.textContent = $tb.names[id];}
 
                     if (id in t.i) {
                         var newid = id += "0";
@@ -577,14 +793,14 @@ function itemManager() {
 
                     t.i[id] = {
                         name: name,
-                        myname: "",
-                        label: "",
+                        myname: $tb.names[id]||"",
+                        label: $tb.names[id]||"",
                         elem: elem,
                         elemname: elemname,
                         id: ido,
                         mycount: 0,
-                        mypricea: "",
-                        myprice: "",
+                        mypricea: $tb.prices[id]||"",
+                        myprice: $tb.prices[id]?t.uprcon($tb.prices[id]):"",
                         high: (function() {
                             var tr;
                             (function() {
@@ -680,13 +896,20 @@ function itemManager() {
                             this.setformpool(this.id);
                         }
                     };
+                    /*
                     if (elem.parentNode.parentNode.id !== "shop_pane" && elem.parentNode.parentNode.parentNode.id !== "shop_pane") {
                         t.i[id].setcount(0);
                         t.i[id].setprices($tb.prices[id]);
                         t.i[id].setnames($tb.names[id]);
                     }
+                    */
 
-                    if (t.gr === "equip") {
+                    if (t.gr === "equip" || (t.gr === "moogle" && elem instanceof HTMLDivElement)) {
+                        if (!t.ids[id]) {
+                            // this may happen on the equips from lottery win or transfer from ISK or so, some function may broke with that
+                            t.i[id].pab = [];
+                            return;
+                        }
                         var matchD = t.ids[id].d.match(/<div>([^&]+)\s(?:&nbsp; ){2}(?:Level\s([0-9]+|Unassigned)\s)?.+(Soulbound|Tradeable|Untradeable).+Condition\:.+\((\d+)%.+Tier:\s(\d+)\s(?:\((\d+)\s\/\s(\d+))?/i);
                         var matchN = t.ids[id].t.match(/([\w-]+) ([\w-]*?) ?(Axe|Club|Rapier|Shortsword|Wakizashi|Dagger|Sword Chucks|Estoc|Longsword|Mace|Katana|Scythe|Oak|Redwood|Willow|Katalox|Ebony|Buckler|Kite|Force|Tower|Cotton|Phase|Gossamer|Silk|Leather|Shade|Kevlar|Dragon Hide|Plate|Power|Shield|Chainmail|Gold|Silver|Bronze|Diamond|Emerald|Prism|Platinum|Steel|Titanium|Iron) ?((?!of)\w*) ?((?=of)[\w- ]*|$)/i);
                         var matchP = t.ids[id].d.match(/Strength|Dexterity|Endurance|Agility|Wisdom|Intelligence/gi) || [];
@@ -726,24 +949,8 @@ function itemManager() {
                         };
                         var formPrices = function() {
                             var priceBaz = 0, priceSal = 0;
-                            function getPrice() {
-                                elemname.click();
-                                var s = $qa("#sum_field div div");
-                                if (s.length === 1 && s[0].innerHTML === "0") {
-                                    return 0;
-                                }
-                                var r = [];
-                                for (var i = 0, len = s.length; i < len; i++) {
-                                    var p = s[i].getAttribute("style").match(/-(\d+)/)[0] / -12 + "";
-                                    if (p !== "11") {
-                                        r.push(p);
-                                    }
-                                }
-                                elemname.click();
-                                priceBaz = +r.reverse().join("");
-                                getPriceS();
-                            }
-                            function getPriceS() {
+                            if ($w.eqvalue) {
+                                priceBaz = $w.eqvalue[id];
                                 if (typeof $tb.set.sal0 !== "undefined") {
                                     var price = 0, q = uniq.quality, p = uniq.typepage, r, b;
                                     if (p === "alight") {
@@ -763,30 +970,40 @@ function itemManager() {
                                         b = 0;
                                     }
                                     if (b !== undefined) {
-                                        price += +t.salv[r][b];
-                                        price += (Math.ceil(priceBaz / 500)) * +t.salv[r][3];
+                                        var m = !isekai ? 1 : b==2 ? 3 : b==1 ? 2 : 1;
+                                        price += m * +t.salv[r][b];
+                                        if (uniq.rare === "true") price += +$tb.set.sal16;
                                     } else {
-                                        price += Math.ceil(priceBaz / 100) * +t.salv[r][3];
+                                        var sp = $w.dynjs_eqstore && $w.dynjs_eqstore[id] ? 5 : 1;
+                                        var s = Math.min(Math.ceil(priceBaz / 100 / sp) ,10);
+                                        price += s * +t.salv[r][3];
+                                        if (uniq.rare === "true") {
+                                            var e = Math.max(s * 0.5, 1);
+                                            price += e * +$tb.set.sal16;
+                                        }
                                     }
-                                    if (uniq.rare === "true") {
-                                        price += +$tb.set.sal16;
+                                    if (b === 0 && q !== 'Magnificent') {
+                                        q = q[0].toLowerCase();
+                                        var ra = 1;
+                                        if (p.startsWith('a') || p == 'shield') {
+                                            b = 'a';
+                                            if (uniq.rare === "true") ra = 5;
+                                        }
+                                        else if (p == 'staff'){
+                                            b = 's';
+                                        }
+                                        else {
+                                            b = 'w';
+                                        }
+                                        price += +$tb.set[q+b+'c'] * ra;
                                     }
                                     priceSal = price;
                                 }
-                                finisher();
                             }
-                            function finisher() {
-                                uniq.price = priceBaz;
-                                uniq.prices = priceSal;
-                                uniq.salvage = (priceSal > priceBaz) ? "true" : "false";
-                                uniq.worthsal = (priceSal > priceBaz) ? "true" : "false";
-                                return;
-                            }
-                            if (!$i("sum_field")) {
-                                finisher();
-                            } else {
-                                getPrice();
-                            }
+                            uniq.price = priceBaz;
+                            uniq.prices = priceSal;
+                            uniq.salvage = (priceSal > priceBaz) ? "true" : "false";
+                            uniq.worthsal = (priceBaz > priceSal) ? "true" : "false";
                         };
                         formPrices();
 
@@ -794,8 +1011,7 @@ function itemManager() {
                             jenga.push({"eid": id.toString(), "key": t.ids[id].k});
                         }
                     } else {
-                        var matchOi = /"Ming Vase|Grue|Clover|Rabbit|Vorpal|Jiggy|Chainsaw|Wirt|Shark-Mounted|BFG9000|Railgun|Flame Thrower|Nuke|ASHPD|Smart Bomb|Tesla Coil|Pony Sled|Lantern|Mayan|Fiber-Optic|Snowman|Annoying Dog|Iridium Sprinkler|Ponyfeather|Snowflake|Altcoin|Ancient|Chicken|Mysterious Box|Solstice|Stuffers|Shimmering|Tenbora's Box|Battery|RealPervert|Raptor|Egg|Gift Pony|Faux|Pegasopolis|Keeper|Crystalline|Self-Satisfaction|Six-Lock Box|One-Bit|ASIC|Reindeer|VPS|Heart Locket|Rainbow Projector| Pot$|Smoothie|Smoothie/i;
-                        var matchF = /"Health|Spirit|Mana|Soul|Crystal|Monster|Happy|Scrap|Energy|Catalyst/i;
+                        var matchF = /Health|Spirit|Mana|Soul|Crystal|Monster|Happy|Scrap|Energy|Catalyst/i;
                         uniq = {
                             locked: "false",
                             obsolete: name.match(matchOi) ? "true" : "false",
@@ -807,7 +1023,7 @@ function itemManager() {
                     Object.assign(t.i[id], uniq);
                 }
 
-                if ($tb.set.jenga && jenga.length > 0) {
+                if (false && $tb.set.jenga && jenga.length > 0) { //database is now unarrival
                     var ht = new XMLHttpRequest();
                     var d = new FormData();
                     d.append('action', 'store');
@@ -815,15 +1031,6 @@ function itemManager() {
                     ht.open("POST","https://hvitems.niblseed.com/");
                     ht.send(d);
                 }
-                createIMB();
-            }
-            if (t.gr === "equip") {
-                getIdsEquip();
-            }
-            else if (t.gr === "item") {
-                getIdsItem();
-            }
-            else {
                 createIMB();
             }
         }
@@ -846,7 +1053,7 @@ function itemManager() {
                         $e("tr", $i("resultst"),{html:"<td>"+t.sela[i].n+"</td><td class='se'>"+t.sela[i].id+"</td><td class='si'>"+t.sela[i].c+"</td><td>"+t.sela[i].p+"</td><td class='se'>"+t.sela[i].l+"</td><td id='pars"+t.sela[i].id+"'> </td>"});
                     }
                 } else {
-                    $i("results").innerHTML=  "";
+                    $i("results").innerHTML = "";
                 }
 
                 $i("results").addEventListener("resMod",function(e){
@@ -898,7 +1105,7 @@ function itemManager() {
                 showResults();
             }
             function butMoogle() {
-                $t("mmtoken","/?s=Bazaar&ss=mm&filter=new");
+                $t("mmtoken","?s=Bazaar&ss=mm&filter=new");
                 $m.show("<h3>Moogle Form</h3><h4 id='note'>You are going to send "+t.sell+" things, are you sure?</h4>"+
                         "<textarea rows='1' cols='30' id='moogle_recipient' placeholder='Recipient'>"+ $tb.templates.mailto +"</textarea>"+
                         "<textarea rows='1' cols='30' id='moogle_subject' placeholder='Subject'>"+ $tb.templates.mailsub +"</textarea>"+
@@ -935,97 +1142,83 @@ function itemManager() {
                         i: 0,
                         j: 0,
                         init: function(){
-                            var stepOneCreate = function() {
-                                if (typeof waitForStepThree !== "undefined") {clearInterval(waitForStepThree);}
-                                if (typeof waitForStepFour !== "undefined") {clearInterval(waitForStepFour);}
-                                if (typeof waitForStepFive !== "undefined") {clearInterval(waitForStepFive);}
-                                mO.one.attach = mO.all.attach[mO.i];
-                                mO.one.recipient = mO.all.recipientS[mO.j];
-                                function one() {
-                                    function event(e) {
-                                        $d.removeEventListener("listReady", event, false);
-                                        mO.one.subject = e.detail.text;
-                                        two();
-                                    }
-                                    $d.addEventListener("listReady", event, false);
-                                    var temp = [];
-                                    temp.push(t.i[mO.one.attach[0].id]);
-                                    t.uformtext(mO.all.subject, temp);
+                            mtrv = 0;
+                            mO.one.attach = mO.all.attach[mO.i];
+                            mO.one.recipient = mO.all.recipientS[mO.j];
+                            function one() {
+                                function event(e) {
+                                    $d.removeEventListener("listReady", event, false);
+                                    mO.one.subject = e.detail.text;
+                                    two();
                                 }
-                                function two() {
-                                    function event(e) {
-                                        $d.removeEventListener("listReady", event, false);
-                                        mO.one.bodydesc = e.detail.textn;
-                                        three();
-                                    }
-                                    $d.addEventListener("listReady", event, false);
-                                    var temp = [];
-                                    for (var n = 0, len = mO.one.attach.length; n < len; n++) {
-                                        temp.push(t.i[mO.one.attach[n].id]);
-                                    }
-                                    t.uformtext(mO.all.bodydesc, temp);
+                                $d.addEventListener("listReady", event, false);
+                                var temp = [];
+                                temp.push(t.i[mO.one.attach[0].id]);
+                                t.uformtext(mO.all.subject, temp);
+                            }
+                            function two() {
+                                function event(e) {
+                                    $d.removeEventListener("listReady", event, false);
+                                    mO.one.bodydesc = e.detail.textn;
+                                    three();
                                 }
-                                function three() {
-                                    mO.one.bodyfull =  mO.all.bodymain +"\n\n"+ mO.one.bodydesc;
-                                    var cod = 0;
-                                    for (var j = 0, len = mO.one.attach.length; j < len; j++) {
-                                        cod += Math.ceil(mO.one.attach[j].c * mO.one.attach[j].p);
-                                    }
-                                    mO.one.cod = cod;
-                                    stepTwoAttach();
+                                $d.addEventListener("listReady", event, false);
+                                var temp = [];
+                                for (var n = 0, len = mO.one.attach.length; n < len; n++) {
+                                    temp.push(t.i[mO.one.attach[n].id]);
                                 }
-                                one();
-                            };
-                            var stepTwoAttach = function() {
+                                t.uformtext(mO.all.bodydesc, temp);
+                            }
+                            function three() {
+                                mO.one.bodyfull = mO.all.bodymain +"\n\n"+ mO.one.bodydesc;
+                                var cod = 0;
                                 for (var j = 0, len = mO.one.attach.length; j < len; j++) {
-                                    if (mO.all.unlock === true && mO.one.attach[j].l === "true") {
-                                        t.i[mO.one.attach[j].id].elem.children[0].click();
-                                    }
-                                    $a.call({mmtoken: t.mmtoken, action: "attach_add", select_item: mO.one.attach[j].id, select_count: mO.one.attach[j].c, select_pane: mO.one.attach[j].kd}, "?s=Bazaar&ss=mm&filter=new", mO.one.attach[j].id, "moogle");
+                                    cod += Math.ceil(mO.one.attach[j].c * mO.one.attach[j].p);
                                 }
-                                var waitForStepThree = setInterval(function(){
-                                    if (mtrv === mO.one.attach.length){
-                                        clearInterval(waitForStepThree);
-                                        stepThreeCod();
+                                mO.one.cod = cod;
+                                $e("tr", $i("resultst"),{html:"<td>Mail_"+mO.one.recipient+"_"+mO.i+"_CoD</td><td class='se'></td><td class='si'>"+mO.one.attach.length+"</td><td>"+mO.one.cod+"</td><td class='se'></td><td id='pars"+mO.one.recipient+"_"+mO.i+"_CoD'> </td>"});
+                                $e("tr", $i("resultst"),{html:"<td>Mail_"+mO.one.recipient+"_"+mO.i+"_Send</td><td class='se'></td><td class='si'>"+mO.one.attach.length+"</td><td></td><td class='se'></td><td id='pars"+mO.one.recipient+"_"+mO.i+"_Send'> </td>"});
+                                $i("resultsST").addEventListener("mtrv", nextStep);
+                                nextStep();
+                            }
+                            function nextStep() {
+                                if (mtrv === 0) {
+                                    for (var j = 0, len = mO.one.attach.length; j < len; j++) {
+                                        if (mO.all.unlock === true && mO.one.attach[j].l === "true") {
+                                            t.i[mO.one.attach[j].id].elem.children[0].click();
+                                        }
+                                        $a.call({mmtoken: t.mmtoken, action: "attach_add", select_item: mO.one.attach[j].id, select_count: mO.one.attach[j].c, select_pane: mO.one.attach[j].kd}, "?s=Bazaar&ss=mm&filter=new", mO.one.attach[j].id, "moogle");
                                     }
-                                }, +$tb.set.ajaxmoogle);
-                            };
-                            var stepThreeCod = function() {
-                                mtrv = "COD";
-                                $a.call({mmtoken: t.mmtoken, action: "attach_cod", action_value: mO.one.cod}, "?s=Bazaar&ss=mm&filter=new", undefined, "moogle");
-                                var waitForStepFour = setInterval(function(){
-                                    if (mtrv === "CODdone"){
-                                        clearInterval(waitForStepFour);
-                                        stepFourSend();
-                                    }
-                                }, +$tb.set.ajaxmoogle);
-                            };
-                            var stepFourSend = function() {
-                                mtrv = "SEND";
-                                $a.call({mmtoken: t.mmtoken, action: "send", message_to_name: mO.one.recipient, message_subject: mO.one.subject, message_body: mO.one.bodyfull}, "?s=Bazaar&ss=mm&filter=new", undefined, "moogle");
-                                var waitForStepFive = setInterval(function(){
-                                    if (mtrv === "SENDdone"){
-                                        clearInterval(waitForStepFive);
-                                        stepFiveEnd();
-                                    }
-                                }, +$tb.set.ajaxmoogle);
-                            };
-                            var stepFiveEnd = function(){
-                                mtrv = 0;
-                                mO.i = mO.i + 1;
-                                if (mO.i < mO.all.attach.length) {
-                                    mO.init();
-                                } else {
-                                    mO.j = mO.j + 1;
-                                    if (mO.j < mO.all.recipientS.length) {
-                                        mO.i = 0;
+                                }
+                                else if (mtrv === mO.one.attach.length){
+                                    mtrv = "COD";
+                                    $a.call({mmtoken: t.mmtoken, action: "attach_cod", action_value: mO.one.cod}, "?s=Bazaar&ss=mm&filter=new", mO.one.recipient+"_"+mO.i+"_CoD", "moogle");
+                                }
+                                else if (mtrv === "CODdone"){
+                                    mtrv = "SEND";
+                                    $a.call({mmtoken: t.mmtoken, action: "send", message_to_name: mO.one.recipient, message_subject: mO.one.subject, message_body: mO.one.bodyfull}, "?s=Bazaar&ss=mm&filter=new", mO.one.recipient+"_"+mO.i+"_Send", "moogle");
+                                }
+                                else if (mtrv === "SENDdone"){
+                                    $i("resultsST").removeEventListener("mtrv", nextStep);
+                                    mO.i = mO.i + 1;
+                                    if (mO.i < mO.all.attach.length) {
                                         mO.init();
                                     } else {
-                                        return true;
+                                        mO.j = mO.j + 1;
+                                        if (mO.j < mO.all.recipientS.length) {
+                                            mO.i = 0;
+                                            mO.init();
+                                        } else {
+                                            return true;
+                                        }
                                     }
                                 }
-                            };
-                            stepOneCreate();
+                                else if (mtrv === "Abort") {
+                                    $i("pars"+mO.one.recipient+"_"+mO.i+"_Send").innerHTML += mtrv;
+                                    $i("resultsST").removeEventListener("mtrv", nextStep);
+                                }
+                            }
+                            one();
                         }
                     };
 
@@ -1043,16 +1236,25 @@ function itemManager() {
                 $m.but("Cancel");
             }
             function butBazaar() {
-                $t("storetoken","/?s=Bazaar&ss=es");
+                $t("storetoken","?s=Bazaar&ss=es");
                 $m.show("<h3>Bazaar</h3><h4 id='note'>You are going to bazaar "+t.sell+" things, are you sure?</h4>");
                 $m.but("OK", function() {
                     showResults(t.sell);
                     function start() {
-                        for (var i = 0; i < t.sell; i++) {
-                            var cur = t.sela[i];
-                            if (t.gr === "equip") {
-                                $a.call({storetoken: t.storetoken, select_group: "item_pane", select_eids: cur.id}, "?s=Bazaar&ss=es", cur.id);
-                            } else {
+                        if (t.gr === "equip") {
+                            return $p("?s=Bazaar&ss=es", {select_eids:t.sela.map(function(i){return i.id}).join(','),select_group:'item_pane',storetoken:t.storetoken}, function(doc){
+                                var message = $i('messagebox_outer', doc);
+                                if (message) {
+                                    message.onclick = function(){$i('csp').removeChild(message)};
+                                    message.style["z-index"] = 400;
+                                    $i('csp').appendChild(message);
+                                }
+                                $i("resultsST").dispatchEvent(new CustomEvent("cntMod", { "detail": {"count": t.sell}}));
+                            });
+                            //$a.call({storetoken: t.storetoken, select_group: "item_pane", select_eids: cur.id}, "?s=Bazaar&ss=es", cur.id);
+                        } else {
+                            for (var i = 0; i < t.sell; i++) {
+                                var cur = t.sela[i];
                                 $a.call({storetoken: t.storetoken, select_mode: "item_pane", select_item: cur.id, select_count: cur.c}, "?s=Bazaar&ss=is", cur.id);
                             }
                         }
@@ -1094,21 +1296,45 @@ function itemManager() {
                 });
                 $m.but("Cancel");
             }
+            function calcPxp0(pxpN, n){
+                let pxp0Est = 300;
+                for (let i = 1; i < 15; i++){
+                    const sumPxpNextLevel = 1000 * (Math.pow(1 + pxp0Est / 1000, n + 1) - 1);
+                    const sumPxpThisLevel = 1000 * (Math.pow(1 + pxp0Est / 1000, n) - 1);
+                    const estimate = sumPxpNextLevel - sumPxpThisLevel;
+                    if (estimate > pxpN) pxp0Est -= 300 / Math.pow(2, i);
+                    else pxp0Est += 300 / Math.pow(2, i);
+                }
+                return Math.round(pxp0Est);
+            }
             function butIW() {
                 $m.show("<h3>Item World</h3><h4 id='note'>You are going to enter into Item World of <span id='iwequip'></span>, are you sure?</h4><div id='iwnote'></div>");
                 $m.but("Calculator", function() {
-                    var id =  t.sela[0].id;
+                    var id = t.sela[0].id;
                     var tier = t.i[id].tier;
                     var pxp = t.i[id].pxpr;
                     var pxpnow = t.i[id].pxpl;
+                    var soul = (t.i[id].level == 0 && t.i[id].trade == "false") ? 'checked' : '';
                     var basepxp, rounds;
                     if (tier === 0) {
                         basepxp = pxp;
                         rounds = Math.floor(75 * Math.pow(((basepxp - 100) / 250), 3));
-                        rounds = (rounds < 20) ? 20 : rounds;
+                        rounds = (rounds < 20) ? 20 : (rounds > 100) ? 100 : rounds;
+                    } else if (tier === 10){
+                        rounds = prompt("Sorry, but that equipment has Tier 10 now. Manually input the amount of rounds or pxp0 in the field below (Number > 100 will be consider as pxp0)");
+                        if (rounds > 100) {
+                            basepxp = rounds;
+                            rounds = Math.floor(75 * Math.pow(((basepxp - 100) / 250), 3));
+                            rounds = (rounds < 20) ? 20 : (rounds > 100) ? 100 : rounds;
+                        }
+                        else {
+                            basepxp = Math.floor(Math.pow(rounds / 75, (1/3)) * 250 + 100);
+                        }
                     } else {
-                        rounds = prompt("Sorry, but that equipment has Tier more than zero. Manually input the amount of rounds in the field below");
-                        basepxp = Math.floor(Math.pow(rounds / 75, (1/3)) * 250 + 100);
+                        //tier is 1-9:
+                        basepxp = calcPxp0(pxp, tier);
+                        rounds = Math.floor(75 * Math.pow(((basepxp - 100) / 250), 3));
+                        rounds = (rounds < 20) ? 20 : (rounds > 100) ? 100 : rounds;
                     }
                     var a = [0];
                     for (i = 1; i < 11; i++) {
@@ -1120,7 +1346,7 @@ function itemManager() {
                         var d = a[i+1] - a[i];
                         c.push(d);
                     }
-                    var pxpperiw = [2,2,4,7,10,15,20];
+                    var pxpperiw = !isekai?[2,2,4,7,10,15,20]:[12,12,12,21,30,45,60];
                     for (var r = 0; r < 7; r += 1) {
                         pxpperiw[r] = rounds * pxpperiw[r];
                     }
@@ -1151,12 +1377,11 @@ function itemManager() {
                         "<table>"+
                         "<tr><th colspan='3'>Calculator</th></tr>"+
                         "<tr><td>From Tier:</td><td>To Tier:</td><td>Difficulty:</td>  </tr>"+
-                        "<tr><td><select id='butIW_from'><option value="+a[0]+">Tier 0</option><option value="+a[1]+">Tier 1</option><option value="+a[2]+">Tier 2</option><option value="+a[3]+">Tier 3</option><option value="+a[4]+">Tier 4</option><option value="+a[5]+">Tier 5</option><option value="+a[6]+">Tier 6</option><option value="+a[7]+">Tier 7</option><option value="+a[8]+">Tier 8</option><option value="+a[9]+">Tier 9</option><option value="+a[10]+">Tier 10</option></select></td>"+
+                        "<tr><td><select id='butIW_from'><option value="+(a[tier]+pxpnow)+">current</option><option value="+a[0]+">Tier 0</option><option value="+a[1]+">Tier 1</option><option value="+a[2]+">Tier 2</option><option value="+a[3]+">Tier 3</option><option value="+a[4]+">Tier 4</option><option value="+a[5]+">Tier 5</option><option value="+a[6]+">Tier 6</option><option value="+a[7]+">Tier 7</option><option value="+a[8]+">Tier 8</option><option value="+a[9]+">Tier 9</option><option value="+a[10]+">Tier 10</option></select></td>"+
                         "<td><select id='butIW_to'><option value="+a[0]+">Tier 0</option><option value="+a[1]+">Tier 1</option><option value="+a[2]+">Tier 2</option><option value="+a[3]+">Tier 3</option><option value="+a[4]+">Tier 4</option><option value="+a[5]+">Tier 5</option><option value="+a[6]+">Tier 6</option><option value="+a[7]+">Tier 7</option><option value="+a[8]+">Tier 8</option><option value="+a[9]+">Tier 9</option><option value="+a[10]+">Tier 10</option></select></td>"+
-                        "<td><select id='butIW_dif'><option value="+pxpperiw[0]+">Normal</option><option value="+pxpperiw[1]+">Hard</option><option value="+pxpperiw[2]+">Nightmare</option><option value="+pxpperiw[3]+">Hell</option><option value="+pxpperiw[4]+">Nintendo</option><option value="+pxpperiw[5]+">IWBTH</option><option value="+pxpperiw[6]+">PFUDOR</option></select></td>"+
+                        "<td><select id='butIW_dif'><option value='0'>Normal</option><option value='1'>Hard</option><option value='2'>Nightmare</option><option value='3'>Hell</option><option value='4'>Nintendo</option><option value='5'>IWBTH</option><option value='6'>PFUDOR</option></select></td>"+
                         "<tr><td></td><td></td><td></td></tr>"+
-                        "<tr><td>Soulfused?</td><td><input id='butIW_soulf' type='checkbox'></input></td><td></td></tr>"+
-                        "<tr><td>Add current PXP?</td><td><input id='butIW_addcur' type='checkbox'></input></td><td></td></tr>"+
+                        "<tr><td>Soulfused?</td><td><input id='butIW_soulf' type='checkbox' "+soul+"></input></td><td></td></tr>"+
                         "<tr><td>IW service cost per pxp?</td><td><input id='butIW_cost' type='text'></input></td><td></td></tr>"+
                         "<tr><td></td><td></td><td></td></tr>"+
                         "<tr><td style='border-top: 1px solid #5C0D11; font-weight: bold;'>PXP:</td><td id='calcpxp'></td><td></td>  </tr>"+
@@ -1180,38 +1405,39 @@ function itemManager() {
                         "<tr><td>PFUDOR</td><td>"+pxpperiw[6]+"</td><td>"+pxpperiw[6] * 2+"</td></tr>"+
                         "</table></div>"+
                         "</div>", "big");
+                    $i("butIW_to").value = t.i[id].parta == 'Staff' ? a[9] : a[10];
+                    $i("butIW_dif").value = +($tb.set.iwDiff||6);
+                    $i("butIW_cost").value = +($tb.set.iwCost||0);
                     $m.but("Calculate", function() {
-                        var calcaddcur = 0, calcmod = 1;
+                        var calcmod = $i("butIW_soulf").checked ? 2 : 1;
+                        var iwcost = +($i("butIW_cost").value || 0);
+                        var iwdiff = $i("butIW_dif").value;
+                        var calcpxp = +$i("butIW_to").value - (+($i("butIW_from").value));
+                        var calcruns = Math.ceil(calcpxp / (pxpperiw[iwdiff] * calcmod));
+                        var calccost = calcruns * iwcost * pxpperiw[iwdiff];
 
-                        if ($i("butIW_addcur").checked) {
-                            calcaddcur = pxpnow;
-                        }
-                        if ($i("butIW_soulf").checked) {
-                            calcmod = 2;
-                        }
+                        $i("calcpxp").textContent = calcpxp;
+                        $i("calcruns").textContent = calcruns;
+                        $i("calccost").textContent = calccost;
 
-                        var calcpxp = +$i("butIW_to").value - (+($i("butIW_from").value) + calcaddcur);
-
-                        var calcruns = Math.ceil(calcpxp / ($i("butIW_dif").value * calcmod));
-
-                        var calccost = calcruns * +($i("butIW_cost").value || 0) * rounds * 16;
-                        $i("calcpxp").innerHTML = calcpxp;
-                        $i("calcruns").innerHTML = calcruns;
-                        $i("calccost").innerHTML = calccost;
+                        $tb.set.iwDiff = iwdiff;
+                        $tb.set.iwCost = iwcost;
+                        $tb.sync();
 
                     }, "big", true);
                     $m.but("Close", undefined, "big");
                 }, "imd", true); // todo:rebuild
                 $m.but("OK", function() {
                     $m.show("<h3>Please, wait for a few seconds</h3>", "big");
-                    var idToMatch = new RegExp(t.sela[0].id);
-                    $g("/?s=Battle&ss=iw&filter=" + t.sela[0].tp, function(r){
-                        for (var i = 0, p = $qa(".eqp div:last-child", r), len = p.length; i < len; i++) {
-                            var onclickToTest = p[i].getAttribute("onclick");
-                            if (idToMatch.test(onclickToTest)) {
-                                $a.call({initid: t.sela[0].id, inittoken: onclickToTest.match(/'(.+)'/)[1]}, "?s=Battle&ss=iw&filter=" + t.sela[0].tp, t.sela[0].id, "iw");
-                                break;
-                            }
+                    $g("?s=Battle&ss=iw&filter=" + t.sela[0].tp, function(r){
+                        var target = $i('e' + t.sela[0].id, r);
+                        if (target) {
+                            var onclickToTest = target.getAttribute("onclick");
+                            $a.call({initid: t.sela[0].id, inittoken: onclickToTest.match(/'(.+)'/)[1]}, "?s=Battle&ss=iw&filter=" + t.sela[0].tp, t.sela[0].id, "iw");
+                        }
+                        else {
+                            $q('#modal h3').textContent = 'Cannot find valid token for this equip.';
+                            $m.but("OK", undefined, "big");
                         }
                     });
                 });
@@ -1233,6 +1459,15 @@ function itemManager() {
                 $m.show("<h3>Storage</h3><h4 id='note'>You are going to send to storage "+t.sell+" equipment, are you sure?</h4>");
                 $m.but("OK", function() {
                     showResults(t.sell);
+                    return $p("?s=Character&ss=in", {equiplist:t.sela.map(function(i){return i.id}).join(','),equipgroup:'inv_equip'}, function(doc){
+                        var message = $i('messagebox_outer', doc);
+                        if (message) {
+                            message.onclick = function(){$i('csp').removeChild(message)};
+                            message.style["z-index"] = 400;
+                            $i('csp').appendChild(message);
+                        }
+                        $i("resultsST").dispatchEvent(new CustomEvent("cntMod", { "detail": {"count": t.sell}}));
+                    });
                     for (var i = 0; i < t.sell; i++) {
                         var cur = t.sela[i];
                         $a.call({equiplist: cur.id, equipgroup:"inv_equip"}, "?s=Character&ss=in&filter=" + cur.tp, cur.id);
@@ -1280,19 +1515,59 @@ function itemManager() {
                 $m.but("Cancel");
             }
             function butShrine() {
+                if (t.tps) shrine();
+                else if (location.search == '?s=Bazaar&ss=ss') shrine(document);
+                else $g("?s=Bazaar&ss=ss", shrine);
+            }
+            function shrine(doc) {
+                if (doc) {
+                    t.tps = {};
+                    $qa('.itemlist div', doc).forEach(function (tp){
+                        var match = tp.getAttribute('onclick').match(/(\d+),(\d+),(\d+),'(.+)'/);
+                        if (match) t.tps[match[4].replace(/&#039;/g,'\'')] = {id:match[1],m:match[3]};
+                    });
+                }
+                if (t.tps) {
+                    var count = t.sela.length, l = 0;
+                    t.selc = 0;
+                    while(l++<count) {
+                        var sel = t.sela.pop();
+                        var tp = t.tps[sel.n];
+                        if (tp) {
+                            sel.id = tp.id;
+                            if (tp.m > 1) {
+                                if (sel.c < tp.m) continue;
+                                sel.n += ' x ' + tp.m;
+                                sel.c = Math.floor(sel.c/tp.m);
+                                sel.p = '';
+                            }
+                        }
+                        t.selc += sel.c;
+                        t.sela.unshift(sel);
+                    }
+                    t.sell = t.sela.length;
+                }
                 $m.show("<h3>Shrine</h3><h4 id='note'>You are going to shrine "+t.sell+" items, with total count is "+t.selc+", are you sure?</h4>"+
-                        "<div><label>What you want to receive back?</label><select id='shrine_body'>"+
-                        "<option "+($tb.templates.shrine === 1 ? 'selected' : '')+" value='1'>Weapon : One-handed</option><option "+($tb.templates.shrine == 2 ? 'selected' : '')+" value='2'>Weapon : Two-handed</option><option "+($tb.templates.shrine === 3 ? 'selected' : '')+" value='3'>Weapon : Staff</option>"+
-                        "<option "+($tb.templates.shrine === 4 ? 'selected' : '')+" value='4'>Armor : Shield</option><option "+($tb.templates.shrine === 5 ? 'selected' : '')+" value='5'>Armor : Cloth</option><option "+($tb.templates.shrine === 6 ? 'selected' : '')+" value='6'>Armor : Ligth</option>"+
-                        "<option "+($tb.templates.shrine === 7 ? 'selected' : '')+" value='7'>Armor : Heavy</option><option "+($tb.templates.shrine === 0 ? 'selected' : '')+" value='0'>Shrine an Artifact</option></select></div>");
+                        "<h4>Shrine count have been divided by Trophy Upgrades ratio, the remainders are ignored</h4>"+
+                        "<div><label>What equips type do want to receive back?</label><select id='shrine_type'>"+
+                        "<option value=''>Shrine an Artifact</option><option value='1handed'>One-handed Weapon</option><option value='2handed'>Two-handed Weapon</option>"+
+                        "<option value='staff'>Staff</option><option value='shield'>Shield</option>"+
+                        "<option value='acloth'>Cloth Armor</option><option value='alight'>Ligth Armor</option><option value='aheavy'>HeavyArmor</option></select></div>"+
+                        "<div><label>What armor slot do you want? (Armor only)</label><select id='shrine_slot'>"+
+                        "<option value=''>Not selected</option><option value='helm'>Helmet</option><option value='body'>Body</option>"+
+                        "<option value='hands'>Hands</option><option value='legs'>Legs</option><option value='feet'>Feet</option></div>"
+                       );
+                $i('shrine_type').selectedIndex = $tb.templates.shrine;
+                $i('shrine_slot').selectedIndex = $tb.templates.shrineSlot;
                 $m.but("OK", function() {
-                    $tb.templates.shrine = +$i('shrine_body').value;
+                    $tb.templates.shrine = $i('shrine_type').selectedIndex;
+                    $tb.templates.shrineSlot = $i('shrine_slot').selectedIndex;
                     $tb.sync();
                     showResults(t.selc);
                     for (var i = 0; i < t.sell; i++) {
                         var cur = t.sela[i];
                         for (var u = 0; u < cur.c; u++) {
-                            $a.call({select_item: cur.id, select_reward: $tb.templates.shrine}, "?s=Bazaar&ss=ss", cur.id, "shrine", cur.n);
+                            $a.call({select_item: cur.id, select_reward_type: $i('shrine_type').value, select_reward_slot: $tb.templates.shrine > 4 ? $i('shrine_slot').value : ''}, "?s=Bazaar&ss=ss", cur.id, "shrine", cur.n);
                         }
                     }
                 });
@@ -1302,13 +1577,12 @@ function itemManager() {
                 $m.show("<h3>Log</h3><h4>What log you want to check?</h4>");
                 $m.but("Trophies", function(){
                     $m.show("<h3>Trophies</h3><div id='logs'></div>", "big", function(){
-                        for (var d in $tb.log) {
-                            var cur = $tb.log[d];
+                        for (var d in $tb.tro) {
+                            var cur = $tb.tro[d];
                             var p = function(x) {return Math.floor(x * 100 / cur.c) + "%";};
-                            if (cur.t === "tro") {
                                 var table = document.createElement("div");
                                 table.innerHTML = "<table><tbody>"+
-                                    "<tr><th colspan='3'>"+cur.na+"</th></tr>"+
+                                    "<tr><th colspan='3'>"+d+"</th></tr>"+
                                     "<tr><th>Total shrined</th><th>"+cur.c+"</th><td>100%</td></tr>"+
                                     "<tr><td>Average</td><td>"+cur.ave+"</td><td>"+p(cur.ave)+"</td></tr>"+
                                     "<tr><td>Superior</td><td>"+cur.sup+"</td><td>"+p(cur.sup)+"</td></tr>"+
@@ -1318,21 +1592,24 @@ function itemManager() {
                                     "<tr><td>Peerless</td><td>"+cur.pee+"</td><td>"+p(cur.pee)+"</td></tr>"+
                                     "</tbody></table>";
                                 $i("logs").appendChild(table);
-                            }
                         }
                     });
+                    $m.but("Reset log", function(){
+                        if (!confirm('Are you sure want to reset Trophies Shrine logs? This action is irreversible!')) return;
+                        $tb.tro = {};
+                        $tb.sync();
+                    }, "big");
                     $m.but("Close", undefined, "big");
                 }, "imb", true);
                 $m.but("Artifacts", function(){
                     $m.show("<h3>Artifacts</h3><div class='art' id='logs'></div>", "big", function(){
-                        for (var d in $tb.log) {
-                            var cur = $tb.log[d];
+                        for (var d in $tb.art) {
+                            var cur = $tb.art[d];
                             var p = function(x) {return Math.floor(x * 100 / cur.c) + "%";};
                             var c = function(x) {return Math.floor(x * 100 / cur.cr.tot) + "%";};
-                            if (cur.t === "art") {
                                 var table = document.createElement("div");
                                 table.innerHTML = "<table><tbody>"+
-                                    "<tr><th colspan='9'>"+cur.na+"</th></tr>"+
+                                    "<tr><th colspan='9'>"+d+"</th></tr>"+
                                     "<tr><th>Total shrined</th><th>"+cur.c+"</th><td>100%</td><th>Total Crystals:</th><th>"+cur.cr.tot+"</th><td></td><td></td><td></td><td></td></tr>"+
                                     "<tr><td>Hath</td><td>"+cur.hath+"</td><td>"+p(cur.hath)+"</td><td>...Vigor </td><td>"+cur.cr.vig +"</td><td>"+c(cur.cr.vig) +"</td><td>...Flames</td><td>"+cur.cr.fla +"</td><td>"+c(cur.cr.fla)+"</td></tr>"+
                                     "<tr><td>Crystals</td><td>"+cur.cr.tot+"</td><td>"+p(cur.cr.tot)+"</td><td>...Finesse </td><td>"+cur.cr.fin +"</td><td>"+c(cur.cr.fin) +"</td><td>...Frost</td><td>"+cur.cr.fro +"</td><td>"+c(cur.cr.fro)+"</td></tr>"+
@@ -1342,9 +1619,13 @@ function itemManager() {
                                     "<tr><td></td><td></td><td></td><td>...Knowledge</td><td>"+cur.cr.kno +"</td><td>"+c(cur.cr.kno) +"</td><td>...Corruption</td><td>"+cur.cr.cor +"</td><td>"+c(cur.cr.cor)+"</td></tr>"+
                                     "</tbody></table>";
                                 $i("logs").appendChild(table);
-                            }
                         }
                     });
+                    $m.but("Reset log", function(){
+                        if (!confirm('Are you sure want to reset Artifacts Shrine logs? This action is irreversible!')) return;
+                        $tb.art = {};
+                        $tb.sync();
+                    }, "big");
                     $m.but("Close", undefined, "big");
                 }, "imb", true);
                 $m.but("Gifts", function(){
@@ -1381,6 +1662,11 @@ function itemManager() {
                             "</tbody></table>";
                         $i("logs").appendChild(table);
                     });
+                    $m.but("Reset log", function(){
+                        if (!confirm('Are you sure want to reset Gifts logs? This action is irreversible!')) return;
+                        for (var item in $tb.mon) {$tb.mon[item]=0;}
+                        $tb.sync();
+                    }, "big");
                     $m.but("Close", undefined, "big");
                 }, "imb", true);
                 $m.but("Cancel");
@@ -1403,7 +1689,7 @@ function itemManager() {
                     return "<div><label>"+descr+"</label><select par='"+set+"'>" + line + "</select></div>";
                 }
                 function createInput(descr,set) {
-                    return "<div><label>"+descr+"</label><input par='"+set+"' type='text' value='"+$tb.set[set]+"' /></div>";
+                    return "<div><label>"+descr+"</label><input par='"+set+"' type='text' value=\""+$tb.set[set]+"\" /></div>";
                 }
                 function createHighlight() {
                     var line = "";
@@ -1418,7 +1704,7 @@ function itemManager() {
                     return line;
                 }
 
-                $m.show("<h3>Settings</h3>"+
+                $m.show("<h3>Settings<span style='color:red'>"+isekai+"</span></h3>"+
                         "<div id='setting'>"+
 
                         "<h4>HVtoolBox</h4>"+
@@ -1426,11 +1712,14 @@ function itemManager() {
                         createSelectTwo("HVtoolBox's wide mode", "wide")+
                         createSelectTwo("Use drag'n'drop mechanism to move HVtoolBox", "drag")+
                         createSelectTwo("Remember the position of HVtoolBox", "pos")+
+                        /*//the mutiple request settings is now hidden because the request number is now force limit, see line 476
                         createInput("Number of requests per call <span style='color:red'>Do not <span style='font-weight:bold'>increase</span> that number if you unsure what you are doing</span>", "ajaxnum")+
                         createInput("Delay between each call (in ms) <span style='color:red'>Do not <span style='font-weight:bold'>decrease</span> that number if you unsure what you are doing</span>", "ajaxwait")+
                         createInput("Delay between attaching/coding/sending the moogleMail (in ms)", "ajaxmoogle")+
+                        */
                         createSelectMore("HVtoolBox's action when task is done","done", [["none","Nothing"], ["sound","Play sound"], ["reload","Reload page"]])+
                         createInput("Correct the align of checkboxes", "corcheck")+
+                        "<div><label>Reset Equips/Items names and prices</label><input type='button' id='reset_names' value='Reset'></div>" +
                         "</div>"+
                         "<div class='c12'>"+
                         createInput("Buttons to be displayed on equipment pages", "butequip")+
@@ -1439,21 +1728,33 @@ function itemManager() {
 
                         "<h4>Pages with equipment</h4>"+
                         "<div class='c13'>"+
+                        createSelectTwo("Enable in Equipment Slot", "equipch")+
+                        createSelectTwo("Enable in Equip Inventory", "equipin")+
+                        createSelectTwo("Enable in Equipment Shop", "equipshop")+
+                        createSelectTwo("Enable in Item World", "equipiw")+
+                        createSelectTwo("Enable in Forge page", "equipforge")+
                         createSelectTwo("Hide locked equipment on Bazaar page", "locked")+
                         createSelectTwo("Hide \'Sell all\' button on Bazaar page", "sellall")+
                         createSelectMore("Size of \'Label\' buttons", "rename", [["big","Big"], ["small","Small"], ["hover","On hover"], ["hide","Hide"]])+
                         createSelectTwo("Show current bazaar and approx. prices of salvaged materials", "showprice")+
                         createSelectTwo("Show PABs", "showpabs")+
-                        createSelectTwo("Automatically send information to Jenga's database", "jenga")+
+                        //createSelectTwo("Automatically send information to Jenga's database", "jenga")+
                         "</div>"+
 
                         "<h4>Pages with items</h4>"+
                         "<div class='c13'>"+
+                        createSelectTwo("Enable in Item Inventory", "itemin")+
+                        createSelectTwo("Enable in Item Shop", "itemshop")+
+                        createSelectTwo("Enable in Shrine", "itemshrine")+
                         createSelectTwo("Hide Figurines on Bazaar and Shrine pages", "figure")+
                         createSelectTwo("Hide obsolete and rare items on Bazaar and Shrine pages", "rare")+
+                        createSelectTwo("Select entire amount when check", "selectAll")+
+                        "</div>"+
+                        "<div class='c12'>"+
+                        createInput("Obsolete and Rare items to hide", "obsoletes")+
                         "</div>"+
 
-                        "<h4>Prices of materials</h4>"+
+                        "<h4>Prices of materials (for salvage prices calculation)</h4>"+
                         "<div class='c14'>"+
                         createInput("High-Grade Metal price", "sal0")+
                         createInput("Mid-Grade Metal price", "sal1")+
@@ -1472,6 +1773,12 @@ function itemManager() {
                         createInput("Low-Grade Cloth price", "sal14")+
                         createInput("Scrap Cloth price", "sal15")+
                         createInput("Energy Cell price", "sal16")+
+                        createInput("Legendary Weapon Core", "lwc")+
+                        createInput("Legendary Staff Core", "lsc")+
+                        createInput("Legendary Armor Core", "lac")+
+                        createInput("Peerless Weapon Core", "pwc")+
+                        createInput("Peerless Staff Core", "psc")+
+                        createInput("Peerless Armor Core", "pac")+
                         "</div>"+
 
                         "<h4>Top</h4>"+
@@ -1487,27 +1794,31 @@ function itemManager() {
                         createSelectTwo("Show equipment counters on every page", "equip")+
                         createSelectTwo("Show current lotteries' prizes on every page", "lotshow")+
                         "</div>"+
-                        "<div class='c12'>"+
+                        (isekai ? "" : "<div class='c12'>"+
                         createInput("Show the lottery bar when these weapon are in Weapon Lottery", "lotweapon")+
                         createInput("Show the lottery bar when these weapon are in Armor Lottery", "lotarmor")+
-                        "</div>"+
+                        "</div>")+
 
                         "<h4>MoogleMail</h4>"+
                         "<div class='c13'>"+
                         createSelectTwo("Show COD for items according to your prices", "mmcod")+
                         createSelectTwo("Show Percentile Ranges's data for attached equipment", "mmpr")+
                         createSelectTwo("Do not display in-game alert/confirm messages", "mmalert")+
+                        createSelectTwo("Enable search and apply hide item setting in write new Moogle page", "mmsearch")+
+                        createSelectTwo("Hide toolbox in write new Moogle page", "mmthide")+
                         "</div>"+
 
                         "<h4>Percentile Ranges Script</h4>"+
                         "<div class='c13'>"+
+                        createSelectTwo("Enable buildin Equipment Percentile Ranges", "prable")+
                         createSelectTwo("Original mode of displaying data (below the box)", "prold")+
                         createSelectTwo("Do not display alert messages when data is not found", "pralert")+
                         "</div>"+
 
                         "<h4>Misc</h4>"+
                         "<div class='c13'>"+
-                        createSelectTwo("Display all arenas on single page", "arena")+
+                        //createSelectTwo("Display all arenas on single page", "arena")+
+                        createSelectTwo("Show detail location on Document title", "showTitle")+
                         createSelectTwo("Show time until next Random Encounter", "inlre")+
                         //createSelectTwo("Remind current difficulty, set, persona and title before entering arenas", "arenarem")+
                         "</div>"+
@@ -1533,14 +1844,29 @@ function itemManager() {
                         "<div id='set_backup'>Backup local.storage</div>"+
                         "<label id='set_restore' for='set_file'>Restore local.storage</label>"+
                         "<input id='set_file' style='display:none' type='file'>"+
+                        "<div id='set_reset'>Reset All</div>"+
                         "</div>"+
                         "</div>"+
                         "<div class='set_info'>"+
                         "<div><span>Version: "+$tb.version+"</span> | Author: <a href='https://forums.e-hentai.org/index.php?showuser=1237490'>f4tal</a></div>"+
                         "<div>Item Manager Script by <a href='https://forums.e-hentai.org/index.php?showuser=304927'>holy_demon</a> | Percentile Range Script by <a href='https://forums.e-hentai.org/index.php?showuser=1647739'>Superlatanium</a></div>"+
+                        "<div style='color:red'>HVToolBox use separate settings on Isekai in this version.</div>"+
                         "<div>Need help? Then visit <a href='https://forums.e-hentai.org/index.php?showtopic=209070'>that thread</a></span>"+
                         "</div>"+
                         "</div>", "big", function() {
+                    $i("reset_names").onclick = function() {
+                        if (!confirm('Are you sure want to reset all names and price for Equips/Items(Not materials)? This action is irreversible!')) return;
+                        $tb.names = {};
+                        $tb.prices = {};
+                        $tb.sync();
+                        $r();
+                    };
+                    $i("set_reset").onclick = function() {
+                        if (!confirm('All settings will be reset to default and all prices and names set in HVToolbox will be lost too. This action is irreversible! Are you sure?')) return;
+                        $tb = {sync: $tb.sync};
+                        $tb.sync();
+                        $r();
+                    };
                     $i("set_backup").onclick = function() {
                         var a = $e("a", $i("setting"), {style: "display:none"});
                         a.download = "localStorage.json";
@@ -1565,7 +1891,7 @@ function itemManager() {
                     var array = $qa("select[par], input[par]", $i("setting"));
                     for (var i = 0, len = array.length; i < len; i++) {
                         var set = array[i].getAttribute("par");
-                        var value = array[i].value.toLowerCase().replace(/\s+/,"");
+                        var value = array[i].value//.toLowerCase().replace(/\s+/,"");
                         if (set === "butequip" || set === "butitem") {
                             value = value.split(",");
                         }
@@ -1708,14 +2034,15 @@ function itemManager() {
                 imbD.onmousedown = function(e) {
                     e.stopPropagation();
                     e.preventDefault();
+                    var offsetL = e.pageX - imb.offsetLeft,offsetT = e.pageY - imb.offsetTop;
                     function drag(e) {
-                        imb.style.cssText = "left: "+e.clientX+"px; top : "+e.clientY+"px";
+                        imb.style.cssText = "left: "+(e.pageX - offsetL)+"px; top : "+ (e.pageY - offsetT) +"px";
                     }
                     $d.addEventListener("mousemove", drag ,true);
                     $d.onmouseup = function(e) {
                         if ($tb.set.pos) {
-                            $tb.set.posget[0] = e.clientX;
-                            $tb.set.posget[1] = e.clientY;
+                            $tb.set.posget[0] = imb.offsetLeft;
+                            $tb.set.posget[1] = imb.offsetTop;
                         }
                         $tb.sync();
                         $d.removeEventListener("mousemove", drag ,true);
@@ -1727,14 +2054,14 @@ function itemManager() {
         function createIMBall() {
             if (t.gr === "equip") {
                 if ($q(".equiplist")) {
-                    if ($q(".equiplist").hasChildNodes()) {
-                        $q(".equiplist").insertBefore($e("div", false, {class: "eqp", id: "equip_header"}), $q(".equiplist div:first-child"));
-                    } else {
-                        $e("div", $q(".equiplist"), {class: "eqp", id: "equip_header"});
+                    $q(".equiplist").insertAdjacentElement('afterbegin', $e("div", false, {class: "eqp", id: "equip_header"}));
+                    if ($tb.set.locked && $l.indexOf("s=Bazaar&ss=es") != -1) {
+                        t.p.classList.add('do-hide');
+                        $e("button", $i("equip_header"), {type: "button", html: "Hide/Show"}).onclick = function(){t.p.classList.toggle('do-hide');}
                     }
                 }
             } else if (t.gr === "item"){
-                $e("thead", $q("table"), {html: "<tr><td></td><td></td><td id='tq'></td><td id='tw'></td><td id='te'></td></tr>"});
+                $e("thead", $q("table"), {html: "<tr><td id='tb'></td><td></td><td id='tq'></td><td id='tw'></td><td id='te'></td></tr>"});
             }
 
             if ($tb.set.rename !== "hide" && t.gr === "equip") {
@@ -1818,7 +2145,7 @@ function itemManager() {
                     var countInput = $q("[placeholder='count']", t.i[this.id].elem);
                     if (this.checked) {
                         // countInput.value = t.i[this.id].count;
-                        countInput.value = "1";
+                        countInput.value = $tb.set.selectAll? t.i[this.id].count : "1";
                     } else {
                         countInput.value = "";
                     }
@@ -1855,19 +2182,50 @@ function itemManager() {
             createStyles();
         }
         function createStyles() {
-            $css(".eqp {display: flex; justify-content: flex-end; flex-wrap: wrap; align-items: flex-start; width: inherit; height: inherit; margin-bottom: .3em;}"+
-                 ".il, .iu {margin: 0 5px 0 0; position: relative; top: 0;}"+
-                 ".eqp>div[onmouseover] {margin-right: auto;}"+
-                 ".eqp>div:last-child {position: relative !important; top: 0; left: 0;}"+
-                 ".eqp button, .eqp input {margin: 0 3px; padding: 0 3px; font-size: .75rem !important; height: 18px;}"+
+            var customStyles = "";
+            if (t.gr == "equip") {
+                customStyles +=
+                    ".si {display: none;}"+
+                    ".eqp {display: flex; justify-content: flex-end; flex-wrap: wrap; align-items: flex-start; width: inherit; height: inherit; margin-bottom: .3em;}"+
+                    ".il, .iu {margin: 0 5px 0 0; position: relative; top: 0;}"+
+                    ".eqp>div[onmouseover] {margin-right: auto;}"+
+                    ".eqp>div[id^=e]:not([onclick]){color:#C2A8A4}"+
+                    ".eqp>div:last-child {position: relative !important; top: 0; left: 0;}"+
+                    ".eqp button, .eqp input {font-size: .75rem !important;}"+
 
+                    "#eqshop_outer, #eqinv_outer, #itemworld_outer, #forge_outer {margin: 0 0 0 10em;}"+
+                    ".eqshop_pane:nth-child(1), .eqinv_pane:nth-child(1) {width: 620px;}"+
+                    ".eqshop_pane:nth-child(1)>div:last-child, .eqinv_pane:nth-child(1)>div:last-child {width: "+$tb.set.corcheck+"px;}"+
+                    ".eqshop_pane:nth-child(2), .eqinv_pane:nth-child(2) {width: 480px;}"+
+                    ".eqshop_pane:nth-child(2)>div:last-child, .eqinv_pane:nth-child(2)>div:last-child {width: 480px;}";
+                if($l.indexOf("equip_slot=") > -1) {
+                    customStyles += "#eqch_left {width: 620px}"+
+                        "#eqch_left {margin: 0 0 0 10em}"+
+                        "#eqch_stats {float: right}"+
+                        "#popup_box {left:65.7em !important}"+
+                        "#compare_pane {left:55em}";
+                }
+            }
+            else if (t.gr === "item"){
+                customStyles +=
+                    ".se {display: none;}"+
+                    ".si {display: block;}"+
+
+                    "#shrine_outer, #itshop_outer {width: 1000px;}"+
+                    "#shrine_left {width: 530px;}"+
+                    "#shrine_right {width: 470px;}"+
+
+                    "#item_left {width: 530px;}"+
+                    "#item_right {width: 370px;}"+
+                    "#item_slots > div {width: 180px;}"+
+
+                    "#itshop_outer > div:nth-child(1) {width: 530px;}"+
+                    "#itshop_outer > div:nth-child(2) {width: 470px;}"+
+                    "#itshop_outer > div:nth-child(1) > div:last-child {width: 530px;}"+
+                    "#itshop_outer > div:nth-child(2) > div:last-child {width: 470px;}";
+            }
+            customStyles +=
                  "#price_all, .equip_price_one, #count_all, .item_count_one, .item_price_one {width: 5em}"+
-
-                 "#eqshop_outer, #eqinv_outer, #itemworld_outer, #forge_outer {margin: 0 0 0 10em;}"+
-                 ".eqshop_pane:nth-child(1), .eqinv_pane:nth-child(1) {width: 620px;}"+
-                 ".eqshop_pane:nth-child(1)>div:last-child, .eqinv_pane:nth-child(1)>div:last-child {width: "+$tb.set.corcheck+"px;}"+
-                 ".eqshop_pane:nth-child(2), .eqinv_pane:nth-child(2) {width: 480px;}"+
-                 ".eqshop_pane:nth-child(2)>div:last-child, .eqinv_pane:nth-child(2)>div:last-child {width: 480px;}"+
 
                  "#imb {position:fixed; display:block; border:1px solid #5C0D11; padding:.3em; background:inherit; width:"+($tb.set.wide? "19" : "9.5")+"em; top:"+$tb.set.posget[1]+"px; left:"+$tb.set.posget[0]+"px; z-index:10;}"+
                  "#imb button, #modal button {width:7.5em; padding:.2em; margin-top:.3em; cursor:pointer; z-index:inherit; font-weight:bold;}"+
@@ -1884,19 +2242,6 @@ function itemManager() {
                  ".modal_imb {width:22em; top:0; left:"+($tb.set.wide? "13.5" : "7")+"em;}"+
                  ".modal_big {width:70em; top: 4em; left: 2em;}"+
                  "#label_check {color: black;font-size: .9rem;font-family: inherit;margin: 0.5em .3em;}"+
-
-                 "#shrine_outer, #itshop_outer {width: 1000px;}"+
-                 "#shrine_left {width: 530px;}"+
-                 "#shrine_right {width: 470px;}"+
-
-                 "#item_left {width: 530px;}"+
-                 "#item_right {width: 370px;}"+
-                 "#item_slots > div {width: 180px;}"+
-
-                 "#itshop_outer > div:nth-child(1) {width: 530px;}"+
-                 "#itshop_outer > div:nth-child(2) {width: 470px;}"+
-                 "#itshop_outer > div:nth-child(1) > div:last-child {width: 530px;}"+
-                 "#itshop_outer > div:nth-child(2) > div:last-child {width: 470px;}"+
 
                  ".eqp .renho {display: none;}"+
                  ".eqp:hover .renho {display: inline-table;}"+
@@ -1925,7 +2270,7 @@ function itemManager() {
                  "#logs tr:first-child th {height: 2em;}"+
                  ".art div {width: 100% !important;}"+
 
-                 "#equipworth {background: #EDEBDF; left: 0; position: absolute; top: 648px; height: 19px; padding: 7px 5px 0 10px; border: 1px solid #5C0D12; border-left: none;}"+
+                 "#equipworth {left: 0; position: absolute; top: 648px; height: 19px; padding: 7px 16px 0 16px; border: 1px solid #5C0D12; border-left: none;}"+
 
                  "#setting {color: black; text-align: left; font-size: .8rem; width: 98%;}"+
                  "#setting h4 {text-align: center; font-size: .9rem; margin-top: 1em;}"+
@@ -1949,11 +2294,11 @@ function itemManager() {
                  ".high > div > input, #setting .high > div > select {flex-basis: 16%;}"+
                  ".css textarea {width: 100% !important;}"+
                  ".end {margin-top: 1em; justify-content: space-between !important;}"+
-                 ".end > div {flex-basis: 40%;}"+
+                 ".end > div {flex-basis: 45%;}"+
                  ".end h4 {margin-top: 0 !important;}"+
                  ".backup {display: flex; justify-content: space-around}"+
-                 ".set_info, #set_backup, #set_restore {border: 1px solid #5C0D11; border-radius: 5px; background: whitesmoke; padding: .8em;}"+
-                 "#set_backup, #set_restore {cursor: pointer;}"+
+                 ".set_info, #set_reset, #set_backup, #set_restore {border: 1px solid #5C0D11; border-radius: 5px; background: whitesmoke; padding: .8em;}"+
+                 "#set_backup, #set_reset, #set_restore {cursor: pointer;}"+
                  ".set_info > div {padding-bottom: 1em;}"+
                  ".set_info span {font-weight: bold;}"+
 
@@ -1965,26 +2310,15 @@ function itemManager() {
                  ".pab-A {background: #9ACD32;}"+
                  ".pab-I {background: #E0FFFF;}"+
                  ".pab-W {background: #00CED1;}"+
-                 ".hidden, .hiddenIM, .si, .equip_count_one {display:none; !important;}"
-                );
-            if($l.indexOf("equip_slot=") > -1) {
-                $css("#eqch_left {width: 620px}"+
-                     "#eqch_left {margin: 0 0 0 10em}"+
-                     "#eqch_stats {float: right}"+
-                     "#compare_pane {left:55em}");
-            }
-            if (t.gr === "item"){
-                $css(".se {display: none;}"+
-                     ".si {display: block;}");
-            }
+                 ".hidden, .do-hide .hiddenIM, .equip_count_one {display:none; !important;}";
 
-            var customStyles = "", shadow;
+            if ($tb.set.mmthide && $l.indexOf("&filter=new") > -1) customStyles += "#imb{display: none}";
+
             for (var i = 0; i < 10; i++) {
-                shadow = ($tb.set.his[i])? "text-shadow: 1px 1px 1px "+$tb.set.his[i] : "";
-                customStyles += ".styleHigh"+[i]+" {color: "+$tb.set.hic[i]+"; background: "+$tb.set.hib[i]+"; " + shadow+"}";
+                var shadow = ($tb.set.his[i])? "text-shadow: 1px 1px 1px "+$tb.set.his[i] : "";
+                customStyles += ".styleHigh"+[i]+" {color: "+$tb.set.hic[i]+"!important; background: "+$tb.set.hib[i]+"; " + shadow+"}";
             }
-            $css(customStyles);
-            $css($tb.set.css);
+            $css(customStyles + $tb.set.css);
             createEXTRAS();
         }
         createIMBbuttons();
@@ -2015,18 +2349,19 @@ function itemManager() {
                 $d.location.href = "https://e-hentai.org/news.php";
             };
         }
-        if ($tb.set.inldif || $tb.set.inlset  || $tb.set.inlper) {
+        if ($tb.set.inldif || $tb.set.inlset || $tb.set.inlper) {
             $css("#set_change_wrapper > div > div > div, #per_change_wrapper > div > div > div {text-decoration: underline; cursor: pointer;}"+
                  "#navbar>div {float: none; width: 0; height: 0; margin-left: 0;}"+
                  "#navbar {display: flex;}"+
-                 "#navbar>div:nth-child(1), #navbar>div:nth-child(2), #navbar>div:nth-child(3), #navbar>div:nth-child(4) {flex-basis: 12%;}"+
-                 "#navbar>div:nth-child(5) {flex-basis: 8%}"+
-                 "#navbar>div:nth-child(6) {flex-basis: 14%;}"+
+                 "#navbar>div:nth-child(1), #navbar>div:nth-child(2), #navbar>div:nth-child(3){flex-basis: 11%;}"+
+                 "#navbar>div:nth-child(4) {flex-basis: 8%;}" +
+                 "#navbar>a+div {flex-basis: 6%;}"+
+                 "#world_readout>div, #level_readout>div {text-align: center;}" +
                  "#nav_mail {flex-basis: 5%;}"+
-                 "#dif_change_wrapper {flex-basis: 9%;}"+
+                 "#dif_change_wrapper {flex-basis: 12%;}"+
                  "#set_change_wrapper {flex-basis: 5%;}"+
-                 "#per_change_wrapper {flex-basis: 15%;}"+
-                 "#level_details {left: 700px !important;}"+
+                 "#per_change_wrapper {flex-basis: 17%;}"+
+                 "#level_details {left: unset !important;}"+
                  ".inline_change {position: relative;z-index: 70000}"+
                  ".inline_change select {width: 100%;background: white}"+
                  ".inline_change option {color: black; margin: 0;border: none;font-size: 0.8rem;background: white}"+
@@ -2038,13 +2373,13 @@ function itemManager() {
                 $i("dif_change_wrapper").onclick = function() {
                     if (!$i("dif_change_inner")) {
                         var mapDif = [
-                            {n:"Normal",v:"1ch"},
-                            {n:"Hard",v:"2ch"},
-                            {n:"Nightmare",v:"3ch"},
-                            {n:"Hell",v:"4ch"},
-                            {n:"Nintendo",v:"5ch"},
-                            {n:"IWBTH",v:"6ch"},
-                            {n:"PFUDOR",v:"7ch"}
+                            {n:"Normal",v:"1"},
+                            {n:"Hard",v:"2"},
+                            {n:"Nightmare",v:"3"},
+                            {n:"Hell",v:"4"},
+                            {n:"Nintendo",v:"5"},
+                            {n:"IWBTH",v:"6"},
+                            {n:"PFUDOR",v:"7"}
                         ];
                         var textDif = "";
                         for (var i = 0, len = mapDif.length; i < len; i++) {
@@ -2056,7 +2391,7 @@ function itemManager() {
                             var difnew = this.value;
                             $q("#level_readout div div").textContent = "Wait...";
                             $f("?s=Character&ss=se", function(r){
-                                $q("[value='"+difnew+"']", r).click();
+                                $q("[name=difflevel][value='"+difnew+"']", r).click();
                                 $q("[type='submit']", r).click();
                             },true);
                         };
@@ -2065,82 +2400,140 @@ function itemManager() {
                     }
                 };
             }
-            if ($tb.set.inlset) {
-                $g("?s=Character&ss=eq", function(r){
-                    var setcur = $qa("#eqsl [src]", r);
-                    var text = "";
-                    for (var i = 0; i < setcur.length; i++) {
-                        var match = setcur[i].src.match(/set(\d+)_(on|off)/);
-                        if (match[2] === "on") {
-                            var htmlof = "<div style='padding: 5px 2px 0 0'><div class='fc4 far fcb'><div>Set: "+match[1]+"</div></div></div>";
-                            if (!$i("per_change_wrapper")) {
-                                $e("div", $i("navbar"), {html: htmlof, id: "set_change_wrapper"});
-                            } else {
-                                var a = $e("div", false, {html: htmlof, id: "set_change_wrapper"});
-                                $i("navbar").insertBefore(a, $i("per_change_wrapper"));
-                            }
-                        }
-                        text += "<option value='"+match[1]+"'>Set "+match[1]+"</option>";
+
+            var characters = $tb.cha,
+                personals = characters.personals,
+                pertext = "", settext = "",
+                reload = false;
+
+            function getSet() {
+                if (!$tb.set.inlset) return;
+                $q("#set_change_wrapper div div div").textContent = "Wait...";
+                $g("?s=Character&ss=eq", parseSet);
+            }
+            function parseSet(r){
+                var setcur = $qa("#eqsl [src]", r);
+                characters.setcount = setcur.length;
+                for (var i = 0; i < setcur.length; i++) {
+                    var match = setcur[i].src.match(/set(\d+)_(on|off)/);
+                    if (match[2] === "on") {
+                        characters.setcur = match[1];
                     }
-                    $i("set_change_wrapper").onclick = function() {
-                        if (!$i("set_change_inner")) {
-                            $e("div", $i("set_change_wrapper"), {class: "inline_change", id: "set_change_inner", html: "<select id='set_change' size='"+setcur.length+"'>"+text+"<select>"});
-                            $i("set_change").onchange = function() {
-                                var setnew = this.value;
-                                $q("#set_change_wrapper div div div").textContent = "Wait...";
-                                $f("?s=Character&ss=eq", function(r){
-                                    $q("#eqsl [src^='/y/equip/set"+setnew+"']", r).click();
-                                },true);
-                            };
-                        } else {
-                            $i("set_change_wrapper").removeChild($i("set_change_inner"));
+                }
+                $tb.sync();
+                showSet();
+                if (reload || (r != document && location.search == "?s=Character&ss=eq" && characters.setcur)) $r();
+            }
+            function showSet(){
+                settext = "";
+                for (var st = 1; st <= characters.setcount; st++) {
+                    settext += "<option value='"+st+"'>Set "+st+"</option>";
+                }
+                if ($tb.set.inlset) $q("#set_change_wrapper div div div").textContent = "Set: "+characters.setcur;
+                if ($i("set_change_inner")) $i("set_change_wrapper").removeChild($i("set_change_inner"));
+            }
+            function parsePersonal(r) {
+                var percur = $qa("[name='persona_set'] option", r);
+                var changed = false, firstin = !personals;
+                personals = characters.personals = [];
+                for (var i = 0; i < percur.length; i++) {
+                    if (percur[i].hasAttribute("selected")) {
+                        if (characters.percur != percur[i].textContent) {
+                            changed = true;
+                            characters.percur = percur[i].textContent;
                         }
-                    };
-                });
+                    }
+                    personals.push(percur[i].textContent);
+                }
+                showPersonal();
+                if (r != document && !firstin) {
+                    reload = true;
+                }
+                if (changed && (!firstin || location.search != "?s=Character&ss=eq")) {
+                    getSet();
+                }
+                else {
+                    $tb.sync();
+                    if (reload) $r();
+                }
+            }
+            function showPersonal() {
+                pertext = "";
+                for (var pe = 0; pe < personals.length; pe++) {
+                    pertext += "<option value=" + (pe+1) + ">" + personals[pe] + "</option>";
+                }
+                if ($tb.set.inlper) $q("#per_change_wrapper div div div").textContent = "Persona: " + characters.percur;
+                if ($i("per_change_inner")) $i("per_change_wrapper").removeChild($i("per_change_inner"));
+            }
+            if ($tb.set.inlset) {
+                $e("div", $i("navbar"), {html: "<div style='padding: 5px 2px 0 0'><div class='fc4 fac fcb'><div>Set: ..</div></div></div>", id: "set_change_wrapper"});
+                if ($i('eqsl')) parseSet(document);
+                else if (!characters.setcount) { if (!$tb.set.inlper || personals) getSet(); }
+                else showSet();
+                $i("set_change_wrapper").onclick = function() {
+                    if (!$i("set_change_inner")) {
+                        $e("div", $i("set_change_wrapper"), {class: "inline_change", id: "set_change_inner", html: "<select id='set_change' size='"+characters.setcount+"'>"+settext+"<select>"});
+                        $i("set_change").onchange = function() {
+                            var setnew = this.value;
+                            $q("#set_change_wrapper div div div").textContent = "Wait...";
+                            return $p("?s=Character&ss=eq", {equip_set: setnew}, parseSet);
+                        };
+                    } else {
+                        $i("set_change_wrapper").removeChild($i("set_change_inner"));
+                    }
+                };
             }
             if ($tb.set.inlper) {
-                $g("?s=Character&ss=ch", function(r){
-                    var percur = $qa("[name='persona_set'] option", r);
-                    var text = "";
-                    for (var i = 0; i < percur.length; i++) {
-                        if (percur[i].hasAttribute("selected")) {
-                            $e("div", $i("navbar"), {html: "<div style='padding: 5px 2px 0 0'><div class='fc4 far fcb'><div>Persona: "+percur[i].textContent+"</div></div></div>", id: "per_change_wrapper"});
-                        }
-                        text += percur[i].outerHTML;
+                $e("div", $i("navbar"), {html: "<div style='padding: 5px 2px 0 0'><div class='fc4 fal fcb'><div>Persona: loading...</div></div></div>", id: "per_change_wrapper"});
+                if ($i('persona_form')) parsePersonal(document);
+                else if (!personals) $g("?s=Character&ss=ch", parsePersonal);
+                else showPersonal();
+                $i("per_change_wrapper").onclick = function() {
+                    if (!$i("per_change_inner")) {
+                        $e("div", $i("per_change_wrapper"), {class: "inline_change", id: "per_change_inner", html: "<select id='per_change' size='"+personals.length+"'>"+pertext+"<select>"});
+                        $i("per_change").onchange = function() {
+                            var pernew = this.value;
+                            $q("#per_change_wrapper div div div").textContent = "Wait...";
+                            return $p("?s=Character&ss=ch", {persona_set: pernew}, parsePersonal);
+                        };
+                    } else {
+                        $i("per_change_wrapper").removeChild($i("per_change_inner"));
                     }
-                    $i("per_change_wrapper").onclick = function() {
-                        if (!$i("per_change_inner")) {
-                            $e("div", $i("per_change_wrapper"), {class: "inline_change", id: "per_change_inner", html: "<select id='per_change' size='"+percur.length+"'>"+text+"<select>"});
-                            $i("per_change").onchange = function() {
-                                var pernew = this.value;
-                                $q("#per_change_wrapper div div div").textContent = "Wait...";
-                                $f("?s=Character&ss=ch", function(r){
-                                    $q("[name='persona_set']", r).value = pernew;
-                                    $q("[name='persona_set']", r).onchange();
-                                },true);
-                            };
-                        } else {
-                            $i("per_change_wrapper").removeChild($i("per_change_inner"));
-                        }
-                    };
-                });
+                };
             }
+        }
 
+        if ($tb.set.showTitle) {
+            var target = document.querySelector(`div[onclick*="${location.search.match(/s=.+?&ss=[^&]+/)}"`);
+            if (target) document.title = 'HentaiVerse·' + target.textContent;
+            if (isekai) document.title = 'Isekai·' + document.title;
+            for (let i of [
+                '#monster_head',
+                '#eqch_left > .eqb > div',
+                '#leftpane > div:nth-child(1) > div > div > div',
+                '#showequip > div',
+                '.cfbs',
+            ]) {
+                if (target = document.querySelector(i)) {
+                    document.title += '·' + target.textContent;
+                    break;
+                }
+            }
         }
 
         if (!$i("networth") && $tb.set.cred) {
-            $g("/?s=Bazaar&ss=mm&filter=new", function (r) {
-                $e("div", $i("mainpane"), {id: "networth", style: "width: 148px", html: "<div class='fc4 fal fcb' style='width:138px'><div>Credits: " + $q("#mmail_attachcredits", r).textContent.match(/(\d[\d,]+)\sC/)[1] + "</div></div>" });
+            $g("?s=Bazaar&ss=is&filter=sp", function (r) {
+                $i("mainpane").appendChild($q('#networth',r));
             });
         }
 
         if ($tb.set.equip && !$i("eqinv_bot")) {
-            $g("/?s=Character&ss=in", function (r) {
+            $g("?s=Character&ss=in", function (r) {
                 $e("div", $i("mainpane"),{id: "equipworth", html: "<div class='fc4 fal fcb'><div>" + $q("#eqinv_bot div", r).textContent + "</div></div>"});
             });
         }
 
-        if($tb.set.lotshow) {
+        if($tb.set.lotshow && !isekai) {
             $css("#lottery_inline {font-size: 10pt;text-align: left;background: #EDEBDF;width: 50%;}"+
                  "#lottery_inline div {border: solid 1px #5C0D11; border-top: none; padding: 7px 0 4px 10px; display: flex;justify-content: flex-start;}"+
                  "#lottery_inline div span:nth-child(1) {flex-basis: 16%;}"+
@@ -2182,6 +2575,7 @@ function itemManager() {
         }
 
         if (t.gr === "equip") {
+            if ($tb.set.showprice && $l.indexOf("Bazaar&ss=es") > -1) $css(".eqp {border-bottom: 1px solid lightgrey; margin-bottom: .5em;}");
             for (var i = 0; i < t.cl; i++) {
                 var elem = t.c[i];
                 var id = t.uidelem($q("[onmouseover]", elem));
@@ -2205,7 +2599,6 @@ function itemManager() {
                     var pb = t.i[id].price;
                     var ps = t.i[id].prices;
                     if ($l.indexOf("Bazaar&ss=es") > -1) {
-                        $css(".eqp {border-bottom: 1px solid lightgrey; margin-bottom: .5em;}");
                         text = (pb > ps)? "<span style='color: brown;'>Bazaar price : "+t.i[id].price+"</span>  /  <span style='color: grey;'>Salvage price : "+t.i[id].prices+"</span>" : "<span style='color: grey;'>Bazaar price : "+t.i[id].price+"</span>  /  <span  style='color: brown;'>Salvage price : "+t.i[id].prices+"</span>";
                     }
                     $e("div", elem, {html: text, class: "c11"});
@@ -2217,13 +2610,19 @@ function itemManager() {
             }
         }
 
-        if (t.gr === "item") {
-            for (var ii = 0; ii < t.cl; ii++) {
-                var elemi = t.c[ii];
-                if ($tb.set.figure && elemi.textContent.indexOf("igurin") > -1 && $l.indexOf("Character&ss=it") === -1) {
+        if ((t.gr === "item" && $l.indexOf("Character&ss=it") === -1) || (t.gr === "moogle" && $i('tb'))) {
+            if ($tb.set.figure || $tb.set.rare ) {
+                $e("button", $i("tb"), {html: 'Hide/Show', name: 'hide', type: "button"}).onclick = function (){
+                    t.p.classList.toggle('do-hide');
+                };
+                t.p.classList.add('do-hide');
+            }
+            for (var ii = 0; ii < t.cml; ii++) {
+                var elemi = t.cm[ii];
+                if ($tb.set.figure && elemi.textContent.indexOf("igurin") > -1) {
                     elemi.classList.add("hiddenIM");
                 }
-                if ($tb.set.rare && t.i[t.uidelem($q("[onmouseover]", elemi))].obsolete === "true" && $l.indexOf("Character&ss=it") === -1) {
+                if ($tb.set.rare && t.i[t.uidelem($q("[onmouseover]", elemi))].obsolete === "true") {
                     elemi.classList.add("hiddenIM");
                 }
             }
@@ -2231,7 +2630,7 @@ function itemManager() {
 
         if ($i("mmail_attachpanes")) {
             if ($tb.set.mmalert) {
-                window.confirm = function(arg){return true;};
+                $w.confirm = function(arg){return true;};
             }
 
             if ($tb.set.mmcod || $tb.set.mmpr) {
@@ -2255,17 +2654,17 @@ function itemManager() {
                         }
                     }
                     totalCod = totalCod.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",");
-                    $e("div", $i("mmail_attachinfo"), {style: "text-align: center; padding-top: 1em", html: "According to your prices, COD should be " +totalCod+ " credits"});
+                    $e("div", $i("mmail_attachinfo"), {style: "text-align: center; padding-top: 1em", html: "According to your prices in HVtoolBox, COD should be " +totalCod+ " credits"});
                 }
-                if ($tb.set.mmpr) {
-                    var dy = dynjs_eqstore;
+                if ($tb.set.mmpr && typeof($w.dynjs_eqstore)!='undefined') {
+                    var dy = $w.dynjs_eqstore;
                     for (var ib = 0; ib < lenm; ib++) {
                         cur = attachs[ib];
                         attachText = cur.textContent;
                         for (var pr in dy) {
                             if (dy[pr].t === attachText) {
                                 var curID = cur.getAttribute("onmouseover").match(/\d+/)[0];
-                                $g("/equip/" + curID + "/" + dy[pr].k, function(r) {
+                                $g("equip/" + curID + "/" + dy[pr].k, function(r) {
                                     var thisID = "e" + r.documentURI.match(/\d+/);
                                     parseEquip(r.body, {}, function(item){
                                         $e("div", $i(thisID).parentNode.parentNode, {class: "moogle_pr", html:item.info + item.badinfo});
@@ -2280,20 +2679,26 @@ function itemManager() {
 
         if ($i("arena_pages")) {
             if ($tb.set.arena) {
-                $g("/?s=Battle&ss=ar&page=2", function(r) {
+                var page = $q('#arena_pages img[src$="2.png"]') ? 2 : 1;
+                $g("?s=Battle&ss=ar&page=" + page, function(r) {
                     var div = document.createElement("div");
                     div.style.cssText = "display: flex;";
                     $i("mainpane").insertBefore(div, $i("initform"));
-                    div.appendChild($i("arena_list"));
-                    div.appendChild($i("arena_list", r));
-                    $css("#arena_list {margin: 20px auto 0;border-collapse: collapse;flex-basis: 45%;width: 44%;");
+                    if (page==1) {
+                        div.appendChild($i("arena_list", r));
+                        div.appendChild($i("arena_list"));
+                    } else {
+                        div.appendChild($i("arena_list"));
+                        div.appendChild($i("arena_list", r));
+                    }
+                    $css("#arena_list {margin: 20px auto 0;border-collapse: collapse;flex-basis: 45%;width: 44%;}#arena_list>tbody>tr>td>div{position: static}");
                     $i("mainpane").removeChild($i("arena_pages"));
                 });
             }
         }
 
         if ($i("monster_outer")) {
-            var mes = $qa("#messagebox .fc2");
+            var mes = $qa("#messagebox_outer p");
             if (mes.length > 0) {
                 for (var g = 0; g < mes.length; g++) {
                     if (/Received/gi.test(mes[g].textContent)) {
@@ -2330,7 +2735,7 @@ function itemManager() {
                             else if (/child/i.test(a)) {$tb.mon.chi += 1;}
                             else if (/waker/i.test(a)) {$tb.mon.wak += 1;}
                             else if (/blessed/i.test(a)) {$tb.mon.ble += 1;}
-                            else if (/ward/i.test(a)) {$tb.mon.war += 1;}
+                            else if (/Spirit-ward/i.test(a)) {$tb.mon.war += 1;}
                             else if (/Raccoon/i.test(a)) {$tb.mon.rac += 1;}
                             else if (/Cheetah/i.test(a)) {$tb.mon.che += 1;}
                             else if (/Turtle/i.test(a)) {$tb.mon.tur += 1;}
@@ -2370,10 +2775,11 @@ function itemManager() {
             }
             $tb.sync();
         }
-
     }
 }
+
 if ($i("showequip")) {
+    if (!$tb.set.prable) return;
     parseEquip(document.body, {}, function(item){
         if ($tb.set.prold) {
             $e("div", $d.body, {html: "<br>"+item.info + (item.badinfo ? ' ' + item.badinfo : '')});
@@ -2400,9 +2806,21 @@ if ($i("showequip")) {
 } else if (!$i("riddlemaster") && !$i("textlog")) {
     itemManager();
 }
+else if ($tb.set.showTitle) {
+    if ($i("riddlemaster")) {
+        document.title += ' - Riddlemaster';
+    }
+    else if ($i("textlog")) {
+        document.title = 'Battling·';
+        if ($i("textlog").textContent.match(/Initializing (.+)\n/)) {
+            document.title += RegExp.$1;
+        }
+        document.title += ' - Hentaiverse'
+    }
+}
 
 function parseEquip(data, item, done){
-    if($tb.set.pralert){$w.alert = function(e){return true;};}
+    if($tb.set.pralert){window.alert = function(e){return true;};}
     var ranges = [
         ['ADB', 67.72, 75.92, ['axe', 'slaughter']],
         ['ADB', 53.39, 59.87, ['axe'], ['slaughter']],
@@ -2998,4 +3416,4 @@ function parseEquip(data, item, done){
         alert('Sorry, but '+lower+' either is obsolete or its data is unknown. Cannot parse it.');
     done(item);
 }
-})();
+}
