@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         HVtoolBox 1.0.14
+// @name         HVtoolBox
 // @namespace    hentaiverse.org
 // @description  Multi-bazaaring, salvaging, repairing, moogling, filter, tweaks and extra features. Based on holy_demon's Item Manager script and Superlatanium's Percentile Ranges script.
 // @match        *://*.hentaiverse.org/*
