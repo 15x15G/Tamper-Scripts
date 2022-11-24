@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         Hentaiverse Monsterbation
 // @namespace    hvmonsterbate
-// @version      1.3.2.0
+// @version      1.4.1.2
 // @description  M-M-M-MONSTERBATE!!
 // @match        *://*.hentaiverse.org/*
 // @exclude      *hentaiverse.org/equip/*
+// @exclude      *hentaiverse.org/isekai/equip/*
 // @grant        none
-// @icon         https://hentaiverse.org/y/favicon.png
 // ==/UserScript==
 
 // vvv SETTINGS vvv //
@@ -14,7 +14,8 @@
 const settings = {
     cfgInterface: true, //              add link under character to configure settings
     profileAutoswitch: true, //         automatically switch profile when changing persona or equipment set
-    ssd: true, //                       write temporary data to disk only when a page reload is expected. manual reload will result in data loss
+    isekaiInherit: true, //             use persistent persona/equipment profiles in isekai
+
     // ui settings
     cfgButton: true, //                 show button to access settings and switch profiles during battle
     mpboost: 100, spboost: 100, //      set to match player stats. add up all bonuses from abilities and capacitor
@@ -55,7 +56,6 @@ const settings = {
                effect:      'seagreen',
                spirit:      'indigo',
                proficiency: 'darkolivegreen',
-               scan:        'lightcoral', //        monsters that have not been scanned in a while
                monster:     'springgreen', //       monsters that match your keywords
                stun:        'darkseagreen', //      stunned monsters, set to false to disable
                imperil:     'lightsteelblue', //    imperilled monsters
@@ -63,17 +63,14 @@ const settings = {
     usableBlink: true, //           mana and spirit gems and potions on the quickbar blink when usable to their full effect
     logColours: false, //           add colour highlights to the battle log
     turnDividers: false, //         add horizontal row between turns
+    logPasteover: false, //         add last turn of previous round to new round log. requires ajaxRound
     hideLog: false, //              hide the battle log
     maxVitals: false, //            show maximum player vitals
     showMonsterHP: false, //        display current and max hp of monsters
     shortenHPbars: false, //        shorten monster hp bars relative to their max hp
     monsterNumbers: false, //       show monster numbers instead of letters
-    monsterInfo: true, //           show monster data from decondelite's database
-    infoAboveBars: false, //        show info when new round loads and it overlaps with quickbar/monsterbar
-    submitScans: true, //           automatically submit data to decondelite's database when scanning. requires scanned monster to be unaffected by mitigation reduction
-    scanTime: 62, //                monsters that haven't been scanned in this number of days will be highlighted
-    monsterKeywords: false, //      highlight monsters where the info (name, trainer, id, etc.) matches this expression, set to false to disable
-                            //      example: '/(Meiling|"plvl":2250|"monsterId":70699|Undead.*Crushing)/'
+    monsterKeywords: false, //      highlight monsters where the name, id or max hp match this expression, set to false to disable
+                            //      example: '/(Meiling|MID=70699|HP=243060)/'
     ajaxRound: true, //             advance to next round using ajax. set to false if you use other scripts that do not support this
     ajaxIntervals: 100, //          set to 0 or a higher number if you experience weird flashing of expiring effects
     noPopup: true, //               skip end of round popup
@@ -116,7 +113,7 @@ const settings = {
                             //  setting this to true will enable middle and right click bindings and disable the context menu everywhere
     wheelEverywhere: false, //  same as above, but for the wheel
     mouseEngage: false, //      hold mouse buttons to modify hover behaviour, rather than performing the bound action only once
-    clickLeft: false, //        unused. set to Nothing to attack with mouseEngage
+    clickLeft: false, //        unused. set to "Nothing" to attack with mouseEngage
     clickMiddle: "Cast('Scan')",
     clickRight: "Strongest([Cast('FUS RO DAH'), Cast('Orbital Friendship Cannon'), Cast('Ragnarok'), Cast('Disintegrate'), Cast('Corruption')])",
     wheelUp: "Impulse(Cast('Imperil'))",
@@ -131,9 +128,9 @@ const settings = {
     // as explained in the keybind section, or to false to disable
     // examples:
     // hoverAction: false, // disable hover
-    // hoverAction: Nothing, // attack
-    // hoverAction: Strongest([Cast('Ragnarok'), Cast('Disintegrate'), Cast('Corruption')]), // dark spell rotation
-    // hoverShiftAction: Strongest([ToggleHover, Cast('Imperil')]), // single cast of imperil
+    // hoverAction: "Nothing", // attack
+    // hoverAction: "Strongest([Cast('Ragnarok'), Cast('Disintegrate'), Cast('Corruption')])", // dark spell rotation
+    // hoverShiftAction: "Strongest([ToggleHover, Cast('Imperil')])", // single cast of imperil
     // with the above example, you can hold shift, hover and hit Z to cast imperil while being protected by the usual hover safeguards
     hoverArea: 6, // part of the monster that activates hover
                   // 1: whole box, 2: icon, 3: name, 4: vitals, 6: status effects
@@ -154,9 +151,9 @@ const settings = {
     monsterBar: [], //    add skill/spell icons next to monsters, for single use or tap to engage/tap elsewhere to disengage, single skills and spell rotations
     // example: first parameter is false for single use or true to engage, followed by skill/spell IDs or leave empty for attack
     // monsterBar: [ [true], //                     engage attack
-    //               [false,'213'], //              single cast of imperil
-    //               [false,'212'], //              single cast of weaken
-    //               [true,'163','162','161'] ], // engage dark spell rotation
+    //               [false,"213"], //              single cast of imperil
+    //               [false,"212"], //              single cast of weaken
+    //               [true,"163","162","161"] ], // engage dark spell rotation
 
     // tracking settings
     trackDrops: true, //          show total numbers of drops and exp at end of battle
@@ -169,7 +166,7 @@ const settings = {
     terseLog: false, //           format log for easier pasting into spreadsheets
     trackProficiency: false, //   show total proficiency gains at end of battle
     proficiencySidebar: false, // show live proficiency gains during battle
-    profbarInMainpane: false, //  set to false to avoid overlap with showMonsterHP and monsterInfo
+    profbarInMainpane: false, //  set to false to avoid overlap with showMonsterHP
     deleteDropLog: 2, //          delete drop log, 0: never, 1: when navigating away from battle section, 2: at end of battle
     dropFontSize: 100, //         adjust font size of drop and proficiency log
     trackSpeed: true, //          show turn count and speed statistic at end of battle
@@ -282,7 +279,7 @@ const settings = {
 
     // custom profiles
     // to override defaults, add elements to 'settings' sections
-    name: '[base]',
+    name: '[persistent]',
     persona: [ { name: 'persona 1', settings: {}, set: [ { name: 'set 1', settings: {} }, { name: 'set 2', settings: {} }, { name: 'set 3', settings: {} },
                { name: 'set 4', settings: {} }, { name: 'set 5', settings: {} }, { name: 'set 6', settings: {} }, { name: 'set 7', settings: {} } ] },
                { name: 'persona 2', settings: {}, set: [ { name: 'set 1', settings: {} }, { name: 'set 2', settings: {} }, { name: 'set 3', settings: {} },
@@ -300,7 +297,26 @@ const settings = {
                { name: 'persona 8', settings: {}, set: [ { name: 'set 1', settings: {} }, { name: 'set 2', settings: {} }, { name: 'set 3', settings: {} },
                { name: 'set 4', settings: {} }, { name: 'set 5', settings: {} }, { name: 'set 6', settings: {} }, { name: 'set 7', settings: {} } ] },
                { name: 'persona 9', settings: {}, set: [ { name: 'set 1', settings: {} }, { name: 'set 2', settings: {} }, { name: 'set 3', settings: {} },
-               { name: 'set 4', settings: {} }, { name: 'set 5', settings: {} }, { name: 'set 6', settings: {} }, { name: 'set 7', settings: {} } ] } ]
+               { name: 'set 4', settings: {} }, { name: 'set 5', settings: {} }, { name: 'set 6', settings: {} }, { name: 'set 7', settings: {} } ] } ],
+    isekai: { name: '[isekai]', settings: {},
+              persona: [ { name: 'persona 1', settings: {}, set: [ { name: 'set 1', settings: {} }, { name: 'set 2', settings: {} }, { name: 'set 3', settings: {} },
+                         { name: 'set 4', settings: {} }, { name: 'set 5', settings: {} }, { name: 'set 6', settings: {} }, { name: 'set 7', settings: {} } ] },
+                         { name: 'persona 2', settings: {}, set: [ { name: 'set 1', settings: {} }, { name: 'set 2', settings: {} }, { name: 'set 3', settings: {} },
+                         { name: 'set 4', settings: {} }, { name: 'set 5', settings: {} }, { name: 'set 6', settings: {} }, { name: 'set 7', settings: {} } ] },
+                         { name: 'persona 3', settings: {}, set: [ { name: 'set 1', settings: {} }, { name: 'set 2', settings: {} }, { name: 'set 3', settings: {} },
+                         { name: 'set 4', settings: {} }, { name: 'set 5', settings: {} }, { name: 'set 6', settings: {} }, { name: 'set 7', settings: {} } ] },
+                         { name: 'persona 4', settings: {}, set: [ { name: 'set 1', settings: {} }, { name: 'set 2', settings: {} }, { name: 'set 3', settings: {} },
+                         { name: 'set 4', settings: {} }, { name: 'set 5', settings: {} }, { name: 'set 6', settings: {} }, { name: 'set 7', settings: {} } ] },
+                         { name: 'persona 5', settings: {}, set: [ { name: 'set 1', settings: {} }, { name: 'set 2', settings: {} }, { name: 'set 3', settings: {} },
+                         { name: 'set 4', settings: {} }, { name: 'set 5', settings: {} }, { name: 'set 6', settings: {} }, { name: 'set 7', settings: {} } ] },
+                         { name: 'persona 6', settings: {}, set: [ { name: 'set 1', settings: {} }, { name: 'set 2', settings: {} }, { name: 'set 3', settings: {} },
+                         { name: 'set 4', settings: {} }, { name: 'set 5', settings: {} }, { name: 'set 6', settings: {} }, { name: 'set 7', settings: {} } ] },
+                         { name: 'persona 7', settings: {}, set: [ { name: 'set 1', settings: {} }, { name: 'set 2', settings: {} }, { name: 'set 3', settings: {} },
+                         { name: 'set 4', settings: {} }, { name: 'set 5', settings: {} }, { name: 'set 6', settings: {} }, { name: 'set 7', settings: {} } ] },
+                         { name: 'persona 8', settings: {}, set: [ { name: 'set 1', settings: {} }, { name: 'set 2', settings: {} }, { name: 'set 3', settings: {} },
+                         { name: 'set 4', settings: {} }, { name: 'set 5', settings: {} }, { name: 'set 6', settings: {} }, { name: 'set 7', settings: {} } ] },
+                         { name: 'persona 9', settings: {}, set: [ { name: 'set 1', settings: {} }, { name: 'set 2', settings: {} }, { name: 'set 3', settings: {} },
+                         { name: 'set 4', settings: {} }, { name: 'set 5', settings: {} }, { name: 'set 6', settings: {} }, { name: 'set 7', settings: {} } ] } ] }
     };
 
 // ^^^ SETTINGS ^^^ //
@@ -359,9 +375,9 @@ function ToggleHover() {
 
 function Drops() { ShowDrops(false); }
 
-function CursorUp() { if ( --cursor < 0 ) cursor = monsters.length - 1; Cursor(); }
+function CursorUp() { if ( --cursor < 0 ) cursor = 0; Cursor(); }
 
-function CursorDown() { cursor = (cursor + 1) % monsters.length; Cursor(); }
+function CursorDown() { if ( ++cursor >= monsters.length ) cursor = monsters.length - 1; Cursor(); }
 
 function CursorTarget() { TargetMonster(cursor)(); }
 
@@ -370,7 +386,7 @@ function CursorHover() { if ( cursor >= 0 ) SetTarget(cursor)(); }
 function ClearTarget() { target = false; }
 
 function Settings() {
-    var mainpane, style, form, div, changed = false, p = 0, s = 0, select, index = 0;
+    var mainpane, style, form, div, changed = false, p = 0, s = 0, isk = '', select, option, index = 0;
     if ( !(mainpane = document.getElementById('mainpane')) ) return;
     bindings = [];
     mainpane.innerHTML = '';
@@ -378,34 +394,34 @@ function Settings() {
         style = document.head.appendChild(document.createElement('style'));
         style.id = 'hvcfgstyle';
         style.innerHTML =
-            '.minfo, .mbar, #barinfo, #cfgbutton { display: none !important; } #mainpane { height: ' + (document.getElementById('navbar') ? '644' : '671') +
+            '.mbar, #cfgbutton { display: none !important; } #mainpane { height: ' + (document.getElementById('navbar') ? '644' : '671') +
             'px; overflow: auto; } #mbcfg div { display: flex; margin: 2px; } #mbcfg input { margin: 0 2px 0 0; } #mbcfg input[type="text"] { width: 30px; }' +
-            '#mbcfgbt { display: flex; position: absolute; bottom: 0; left: 0; height: 27px; } #mbcfgbt select { margin: 0; } #mbcfgbt div { margin: 4px 0; }' +
-            '.help { cursor: pointer; } .help .helptext { visibility: hidden; text-align: left; position: absolute; z-index: 2; bottom: 0; right: 0;' +
-            'background-color: #EDEBDF; padding: 4px; border: 1px solid #5C0D11; } .help:hover .helptext { visibility: visible; }'; }
+            '#mbcfgbt { display: flex; position: absolute; bottom: 0; left: 0; height: 27px; width: inherit; } #mbcfgbt select { margin: 0; }' +
+            '#mbcfgbt div { margin: 4px 0; } #mbcfgbt input[type="checkbox"] { margin-left: 10px; } .help { cursor: pointer; }' +
+            '.help .helptext { visibility: hidden; text-align: left; position: absolute; z-index: 2; bottom: 0; right: 0; background-color: #EDEBDF;' +
+            'padding: 4px; border: 1px solid #5C0D11; } .help:hover .helptext { visibility: visible; }'; }
     form = mainpane.appendChild(document.createElement('form'));
     form.id = 'mbcfg';
-    const Change = function(i,e) {
+    const Change = function(i, e) {
         return function() {
             changed = true;
-            var prf = s ? cfg.persona[p-1].set[s-1].settings : (p ? cfg.persona[p-1].settings : cfg), setting = settingsData[i][0],
-                input = form.querySelector('[name="' + setting + (e ? '-' + e : '') + '"]'), value, inputs, j,
-                above = s && ((value = cfg.persona[p-1].settings[setting]) || value === false || value === 0) ? cfg.persona[p-1].settings : (p ? cfg : settings);
+            var prf = s ? (isk ? cfg.isekai : cfg).persona[p-1].set[s-1].settings : (p ? (isk ? cfg.isekai : cfg).persona[p-1].settings : (isk ? cfg.isekai.settings : cfg)),
+                setting = settingsData[i][0], input = form.querySelector('[name="' + setting + (e ? '-' + e : '') + '"]'), value, inputs, j, above = Above(setting);
             switch ( settingsData[i][1][0] ) {
                 case 'b': prf[setting] = input.checked; break;
                 case 'o': if ( !prf[setting] ) {
-                              prf[setting] = JSON.parse(JSON.stringify(above[setting])); }
-                              prf[setting][e] = (value = input.value) == '' ? above[setting][e] : (value == 'false' ? false : value); break;
-                case 'a': prf[setting] = (value = input.value) == '' ? above[setting] : JSON.parse(value); break;
-                case 'i': prf[setting] = (value = parseInt(input.value)) || value === 0 ? value : above[setting]; break;
+                              prf[setting] = JSON.parse(JSON.stringify(above)); }
+                              prf[setting][e] = (value = input.value) == '' ? above[e] : (value == 'false' ? false : value); break;
+                case 'a': prf[setting] = (value = input.value) == '' ? above : JSON.parse(value); break;
+                case 'i': prf[setting] = (value = parseInt(input.value)) || value === 0 ? value : above; break;
                 case 'f': prf[setting] = parseFloat(value = input.value) || parseFloat(value) === 0 ? parseFloat(value) :
-                                         settingsData[i][1][1] == 's' && value != '' ? 'auto' : above[setting]; break;
+                                         settingsData[i][1][1] == 's' && value != '' ? 'auto' : above; break;
                 case 's': if ( setting.indexOf('Action') > -1 && regexp.itemuse.test(input.value) ) {
                               alert('Fearsome powers thrust Laputa into orbit. Their dreaded empire once ruled the earth!'); return; }
                 case 't': if ( regexp.hoveruse.test(input.value) ) {
                               alert('Fearsome powers thrust Laputa into orbit. Their dreaded empire once ruled the earth!'); return; }
-                          prf[setting] = (value = input.value.replace(regexp.whitespace,'')) == '' ? above[setting] : value; break; }
-            if ( p && JSON.stringify(above[setting]) === JSON.stringify(prf[setting]) ) {
+                          prf[setting] = (value = input.value.replace(regexp.whitespace,'')) == '' ? above : value; break; }
+            if ( (isk || p) && JSON.stringify(above) === JSON.stringify(prf[setting]) ) {
                 if ( e ) {
                     form.querySelector('#' + setting).parentNode.style.opacity = '0.5';
                     inputs = form.querySelectorAll('[name*="' + setting + '-"]');
@@ -425,7 +441,7 @@ function Settings() {
         Load = function(d) {
             LoadCfg();
             form.innerHTML = '';
-            var input, value, pvalue, svalue, fromp, froms;
+            var input, value;
             if ( d ) {
                 input = form.appendChild(document.createElement('div')).appendChild(document.createElement('textarea'));
                 input.name = 'dump';
@@ -438,25 +454,25 @@ function Settings() {
                     var dump = JSON.parse(input.value);
                     for ( var setting in settings ) {
                         cfg[setting] = (value = dump[setting]) || value === false || value === 0 ? value : settings[setting]; }
-                    var option = select.querySelector('[value="00"');
+                    var option = select.querySelector('[value="00"]');
                     option.innerHTML = cfg.name;
                     for ( var i = 0; i < cfg.persona.length; i++ ) {
-                        option = select.querySelector('[value="' + (i+1) + '0"');
+                        option = select.querySelector('[value="' + (i+1) + '0"]');
                         option.innerHTML = '- ' + cfg.persona[i].name;
                         for ( var j = 0; j < cfg.persona[i].set.length; j++ ) {
-                            option = select.querySelector('[value="' + (i+1) + (j+1) + '"');
+                            option = select.querySelector('[value="' + (i+1) + (j+1) + '"]');
                             option.innerHTML = '-- ' + cfg.persona[i].set[j].name; }}};
                 return; }
             for ( var i = 0; i < settingsData.length; i++ ) {
-                value = cfg[settingsData[i][0]];
-                fromp = p && ((pvalue = cfg.persona[p-1].settings[settingsData[i][0]]) || pvalue === false || pvalue === 0);
-                froms = s && ((svalue = cfg.persona[p-1].set[s-1].settings[settingsData[i][0]]) || svalue === false || svalue === 0);
-                var grey = (p && !s && (!fromp || JSON.stringify(value) === JSON.stringify(pvalue))) ||
-                           (s && (!froms || (fromp && JSON.stringify(pvalue) === JSON.stringify(svalue)) ||
-                                 (!fromp && JSON.stringify(value) === JSON.stringify(svalue)))),
+                value = (s ? (isk ? cfg.isekai : cfg).persona[p-1].set[s-1].settings :
+                        (p ? (isk ? cfg.isekai : cfg).persona[p-1].settings :
+                        (isk ? cfg.isekai.settings : cfg)))[settingsData[i][0]];
+                var none = !(value || value === false || value === 0), above = Above(settingsData[i][0]);
+                if ( none ) {
+                    value = above; }
+                var grey = (isk || p) && (none || JSON.stringify(value) === JSON.stringify(above)),
                     div = form.appendChild(document.createElement('div'));
                 div.style.opacity = grey ? '0.5' : '1';
-                value = froms ? svalue : (fromp ? pvalue : value);
                 switch ( settingsData[i][1][0] ) {
                     case 'h': div.appendChild(document.createElement('div')).innerHTML = settingsData[i][0];
                               div.style.opacity = '1'; break;
@@ -507,23 +523,40 @@ function Settings() {
                     var helptext = help.appendChild(document.createElement('span'));
                     helptext.className = 'helptext';
                     helptext.innerHTML = settingsData[i][3]; }}},
+    Above = function(setting) {
+        var value;
+        if ( !isk ) {
+            return s && ((value = cfg.persona[p-1].settings[setting]) || value === false || value === 0) ? value : (p ? cfg[setting] : settings[setting]); }
+        else if ( !cfg.isekaiInherit ) {
+            return s && ((value = cfg.isekai.persona[p-1].settings[setting]) || value === false || value === 0) ? value :
+                  (p && ((value = cfg.isekai.settings[setting]) || value === false || value === 0) ? value : cfg[setting]); }
+        else {
+            return s && ((value = cfg.persona[p-1].set[s-1].settings[setting]) || value === false || value === 0) ? value :
+                  (s && ((value = cfg.isekai.persona[p-1].settings[setting]) || value === false || value === 0) ? value :
+                  (p && ((value = cfg.persona[p-1].settings[setting]) || value === false || value === 0) ? value :
+                  (p && ((value = cfg.isekai.settings[setting]) || value === false || value === 0) ? value : cfg[setting]))); }},
     Save = function() { if ( changed ) { changed = false; localStorage.HVmbcfg = JSON.stringify(cfg); }},
-    Exit = function() { StoreTmp(); location.href = location.href; },
+    Exit = function() { location.href = location.href; },
     Reset = function() {
-        if ( p == 0 && s == 0 && confirm('Reset to defaults?') ) {
+        if ( p == 0 && s == 0 && !isk && confirm('Reset to defaults?') ) {
             localStorage.removeItem('HVmbcfg');
             cfg = JSON.parse(JSON.stringify(settings));
             Settings(); }
+        else if ( p == 0 && s == 0 && isk && confirm('Reset this profile?') ) {
+            cfg.isekai.settings = {};
+            Save();
+            Load(); }
         else if ( p != 0 && confirm('Reset this profile?') ) {
-            (s ? cfg.persona[p-1].set[s-1] : cfg.persona[p-1]).settings = {};
+            (s ? (isk ? cfg.isekai : cfg).persona[p-1].set[s-1] : (isk ? cfg.isekai : cfg).persona[p-1]).settings = {};
             Save();
             Load(); }},
-    Switch = function(persona,set) {
-        if ( p === persona && s === set ) return true;
+    Switch = function(persona, set, ise) {
+        if ( p === persona && s === set && isk === ise ) return true;
         if ( !changed || confirm('Save and change profile?') ) {
             Save();
             p = persona;
             s = set;
+            isk = ise;
             Load();
             return true; }
         return false; };
@@ -536,7 +569,7 @@ function Settings() {
     button.innerHTML = 'Save';
     button.onclick = function() { Save(); Load(); };
     button = div.appendChild(document.createElement('button'));
-    button.innerHTML = 'Save & Exit';
+    button.innerHTML = 'S&E';
     button.onclick = function() { if ( !changed || confirm('Save and exit?') ) { Save(); Exit(); }};
     button = div.appendChild(document.createElement('button'));
     button.innerHTML = 'Exit';
@@ -549,11 +582,11 @@ function Settings() {
     button.onclick = Reset;
     select = div.appendChild(document.createElement('select'));
     select.onchange = function() {
-        if ( Switch(parseInt(select.value[0]), parseInt(select.value[1])) ) {
+        if ( Switch(parseInt(select.value[0]), parseInt(select.value[1]), select.value[2] ? 'i' : '') ) {
             index = select.selectedIndex; }
         else {
             select.selectedIndex = index; }};
-    var option = select.appendChild(document.createElement('option'));
+    option = select.appendChild(document.createElement('option'));
     option.value = '00';
     option.innerHTML = cfg.name;
     if ( '' + profile.p + (profile.p ? profile['s' + profile.p] : '0') == option.value ) {
@@ -570,10 +603,27 @@ function Settings() {
             option.innerHTML = '-- ' + cfg.persona[i].set[j].name;
             if ( '' + profile.p + (profile.p ? profile['s' + profile.p] : '0') == option.value ) {
                 option.style.color = 'blue'; }}}
+    option = select.appendChild(document.createElement('option'));
+    option.value = '00i';
+    option.innerHTML = cfg.isekai.name;
+    if ( '' + profile.ip + (profile.ip ? profile['is' + profile.ip] : '0') + 'i' == option.value ) {
+        option.style.color = 'red'; }
+    for ( i = 0; i < cfg.isekai.persona.length; i++ ) {
+        option = select.appendChild(document.createElement('option'));
+        option.value = (i+1) + '0i';
+        option.innerHTML = '- ' + cfg.isekai.persona[i].name;
+        if ( '' + profile.ip + (profile.ip ? profile['is' + profile.ip] : '0') + 'i' == option.value ) {
+            option.style.color = 'red'; }
+        for ( j = 0; j < cfg.isekai.persona[i].set.length; j++ ) {
+            option = select.appendChild(document.createElement('option'));
+            option.value = '' + (i+1) + (j+1) + 'i';
+            option.innerHTML = '-- ' + cfg.isekai.persona[i].set[j].name;
+            if ( '' + profile.ip + (profile.ip ? profile['is' + profile.ip] : '0') + 'i' == option.value ) {
+                option.style.color = 'red'; }}}
     button = div.appendChild(document.createElement('button'));
     button.innerHTML = 'Name';
     button.onclick = function() {
-        var prf = s ? cfg.persona[p-1].set[s-1] : (p ? cfg.persona[p-1] : cfg),
+        var prf = s ? (isk ? cfg.isekai : cfg).persona[p-1].set[s-1] : (p ? (isk ? cfg.isekai : cfg).persona[p-1] : (isk ? cfg.isekai : cfg)),
             opt = select.options[index], name;
         if ( (name = prompt('Name this profile?', prf.name)) && name != prf.name ) {
             changed = true;
@@ -582,13 +632,13 @@ function Settings() {
     button = div.appendChild(document.createElement('button'));
     button.innerHTML = 'Set';
     button.onclick = function() {
-        select.querySelector('[style*="blue"').style.color = '';
-        profile.p = p;
+        select.querySelector('[style*="' + (isk ? 'red' : 'blue') + '"]').style.color = '';
+        profile[isk + p] = p;
         if (p) {
-            profile['s' + p] = s; }
+            profile[isk + 's' + p] = s; }
         if ( JSON.stringify(profile) != localStorage.HVmbp ) {
             localStorage.HVmbp = JSON.stringify(profile); }
-        select.querySelector('[value="' + p + s + '"').style.color = 'blue'; };
+        select.querySelector('[value="' + p + s + isk + '"]').style.color = isk ? 'red' : 'blue'; };
     var auto = div.appendChild(document.createElement('input'));
     auto.name = 'profileAutoswitch';
     auto.type = 'checkbox';
@@ -596,7 +646,25 @@ function Settings() {
     auto.onchange = function() {
         changed = true;
         cfg.profileAutoswitch = auto.checked; };
-    div.appendChild(document.createElement('div')).innerHTML = 'auto'; }
+    var help = div.appendChild(document.createElement('div'));
+    help.className = 'help';
+    help.innerHTML = 'auto';
+    var helptext = help.appendChild(document.createElement('span'));
+    helptext.className = 'helptext';
+    helptext.innerHTML = 'automatically switch profile when changing persona or equipment set';
+    var inherit = div.appendChild(document.createElement('input'));
+    inherit.name = 'isekaiInherit';
+    inherit.type = 'checkbox';
+    inherit.checked = cfg.isekaiInherit;
+    inherit.onchange = function() {
+        changed = true;
+        cfg.isekaiInherit = inherit.checked; };
+    help = div.appendChild(document.createElement('div'));
+    help.className = 'help';
+    help.innerHTML = 'inherit';
+    helptext = help.appendChild(document.createElement('span'));
+    helptext.className = 'helptext';
+    helptext.innerHTML = 'use persistent persona/equipment profiles in isekai'; }
 
 // keybind helper functions
 function handleKeys(e) {
@@ -661,17 +729,20 @@ function Alt(e) { return e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey; }
 function Any(e) { return !e.metaKey; }
 
 // global variables and constants
-var cfg = {}, profile = JSON.parse(localStorage.HVmbp || '{ "p":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0,"s6":0,"s7":0,"s8":0,"s9":0 }'),
-    bindings = [], gem = [], target = false, cursor = -1, interruptHover, interruptAlert = false, hovering = false, override = false, impulse = false,
-    done = false, release = false, shiftHeld = false, ctrlHeld = false, altHeld = false, bg, dummy = document.createElement('div'), mp = 1, sp = 1,
-    monsters = [], monsterData = {}, log, timelog = JSON.parse(localStorage.HVtimelog || '{ "turn":0,"action":0,"round":1,"lastuse":{} }'),
-    combatlog = JSON.parse(localStorage.HVcombatlog || '{ "pdealt":{"hit":0,"crit":0,"miss":0},"mdealt":{"hit":0,"crit":0,"miss":0},' +
-                                                         '"ptaken":{"hit":0,"shit":0,"crit":0,"scrit":0,"miss":0},' +
-                                                         '"mtaken":{"hit":0,"shit":0,"crit":0,"scrit":0,"miss":0},"used":{} }'),
-    vitals = JSON.parse(localStorage.HVvitals || '{ "hp":0,"mp":0,"sp":0 }'),
-    droplog = JSON.parse(localStorage.HVtrackdrops ||
-              '{ "Crystals":{}, "Equips":{}, "Artifacts":{}, "Figurines":{}, "Trophies":{}, "Consumables":{}, "Foods":{}, "proficiency":{} }'),
-    processing = false, csp = false;
+var cfg = {}, profile = JSON.parse(localStorage.HVmbp || '{}'), isekai = document.URL.indexOf('isekai') > -1 ? 'i' : '',
+    bindings = [], gem = [], target = false, cursor = localStorage['HVcursor' + isekai] ? parseInt(localStorage['HVcursor' + isekai]) : -1,
+    interruptHover, interruptAlert = false, hovering = false, override = false, impulse = false, done = false,
+    release = false, shiftHeld = false, ctrlHeld = false, altHeld = false, bg, dummy = document.createElement('div'),
+    mp = 1, sp = 1, monsters = [], monsterData = {}, log, turn, timelog = JSON.parse(localStorage['HVtimelog' + isekai] || '{ "turn":0,"action":0,"round":1,"lastuse":{} }'),
+    combatlog = JSON.parse(localStorage['HVcombatlog' + isekai] || '{ "pdealt":{"hit":0,"crit":0,"miss":0,"evade":0,"parry":0,"resist":0,"r50":0,"r75":0,"r90":0},' +
+                                                         '"mdealt":{"hit":0,"crit":0,"miss":0,"evade":0,"parry":0,"resist":0,"r50":0,"r75":0,"r90":0},' +
+                                                         '"ptaken":{"hit":0,"shit":0,"crit":0,"scrit":0,"miss":0,"evade":0,"parry":0,"block":0,"r50":0,"r75":0,"r90":0},' +
+                                                         '"mtaken":{"hit":0,"shit":0,"crit":0,"scrit":0,"miss":0,"evade":0,"parry":0,"block":0,"r50":0,"r75":0,"r90":0},' +
+                                                         '"used":{} }'),
+    vitals = JSON.parse(localStorage['HVvitals' + isekai] || '{ "hp":0,"mp":0,"sp":0 }'),
+    droplog = JSON.parse(localStorage['HVtrackdrops' + isekai] ||
+              '{ "Crystals":{}, "Equips":{}, "Mats":{}, "Artifacts":{}, "Figurines":{}, "Trophies":{}, "Consumables":{}, "Foods":{}, "proficiency":{} }'),
+    csp = false;
 const damage = document.getElementById('2501') ? 'Arcane Focus' : 'Heartseeker',
     KEY_A = 65, KEY_B = 66, KEY_C = 67, KEY_D = 68, KEY_E = 69, KEY_F = 70, KEY_G = 71, KEY_H = 72, KEY_I = 73, KEY_J = 74, KEY_K = 75, KEY_L = 76, KEY_M = 77,
     KEY_N = 78, KEY_O = 79, KEY_P = 80, KEY_Q = 81, KEY_R = 82, KEY_S = 83, KEY_T = 84, KEY_U = 85, KEY_V = 86, KEY_W = 87, KEY_X = 88, KEY_Y = 89, KEY_Z = 90,
@@ -681,22 +752,21 @@ const damage = document.getElementById('2501') ? 'Arcane Focus' : 'Heartseeker',
     KEY_COMMA = 188, KEY_PERIOD = 190, KEY_SLASH = 191, KEY_FORWARDSLASH = 191, KEY_GRAVE = 192, KEY_TILDE = 192, KEY_LBRACKET = 219, KEY_BACKSLASH = 220,
     KEY_SEMI = 186, KEY_RBRACKET = 221, KEY_APOSTROPHE = 222, KEY_SHIFT = 16, KEY_CTRL = 17, KEY_ALT = 18,
     regexp = { gem:/\w(\w+) Gem/, defaultgem:/\w(\w+).gem/, duration:/(x(\d))*[^\(]*, (\d+)/,
-        monsters:/MID=\d+[^<>]+HP=\d+/g, monster:/MID=(\d+) \((.+)\) .+ HP=(\d+)/, date:/(\d+)-(\d+)-(\d+)/, spellicon:/, '(\w+)'/, defaultfont:/"c\d\w"/,
-        turn:/(.+?)<td class="tls">/, action:/>([^<>]+)<\/td><\/tr>(<tr><td class="tlb">Spirit Stance Exhausted<\/td><\/tr>)*<tr><td class="tls"/,
+        monsters:/MID=\d+[^<>]+HP=\d+/g, monster:/MID=(\d+) \((.+)\) .+ HP=(\d+)/, spellicon:/, '(\w+)'/, defaultfont:/"c\d\w"/,
+        turn:/(.+?)<tr><td class="tls">/, action:/>([^<>]+)<\/td><\/tr>(<tr><td class="tlb">Spirit Stance Exhausted<\/td><\/tr>)*<tr><td class="tls"/,
         zeroturn:/You use\s*\w* (Gem|Draught|Potion|Elixir|Drink|Candy|Infusion|Scroll|Vase|Gum)/, use:/You (cast|use) ([\w\s-]+)/,
-        scan:new RegExp('Scanning ([^<>]+)\\.\\.\\..*>([^<>,]+)(, Power Level (\\d+)<|<).*<\\/strong><\\/td><td>([^<>]*)<.*<\\/strong><\\/td><td>([^<>]+)<' +
-        '.*(\\+|-)(\\d+)%.*(\\+|-)(\\d+)%.*(\\+|-)(\\d+)%.*(\\+|-)(\\d+)%.*(\\+|-)(\\d+)%.*(\\+|-)(\\d+)%.*(\\+|-)(\\d+)%.*(\\+|-)(\\d+)%.*(\\+|-)(\\d+)%'),
-        debuff:/(imperil.png|firedot.png|coldslow.png|elecweak.png|windmiss.png|holybreach.png|darknerf.png)/,
         damage:/[^<>]+damage( \([^<>]+\))*(<\/td><\/tr><tr><td class="tlb">Your spirit shield absorbs \d+ |<|\.)/g,
         type:/for (\d+) (\w+) damage/, shield:/absorbs (\d+)/, strike:/(Fire|Cold|Wind|Elec|Holy|Dark|Void) Strike hits/,
         dot:/for (\d+) damage/, pdot:/(Bleeding Wound|Spreading Poison)/, points:/for (\d+) points of (\w+) damage/,
-        damagespell:/(Fiery|Inferno|Flames|Freeze|Blizzard|Fimbulve|Shockbla|Chained|Wrath|Gale|Downburs|Storms|Smite|Banishme|Paradise|Corrupti|Disinteg|Ragnarok)/,
-        mmiss:/(to connect.|your spell.)/g, pmiss:/(its mark.|your attack.)/g, mevade:/ casts [^<>]+the attack./g,
-        pevade:/(>You evade|>You block|>You parry|misses the attack against you.| uses [^<>]+the attack.)/g,
+        mdmiss:/to connect./g, mdevade:/evades your spell./g, md50:/ hits [^y][^<>]+50%/g, md75:/ hits [^y][^<>]+75%/g, md90:/ hits [^y][^<>]+90%/g,
+        mdresist:/resists your spell./g, pdmiss:/its mark./g, pdevade:/evades your attack./g, pdparry:/parries your attack./g, mtevade:/ casts [^<>]+evade the attack./g,
+        mtblock:/ casts [^<>]+block the attack./g, mt50:/ hits y[^<>]+50%/g, mt75:/ hits y[^<>]+75%/g, mt90:/ hits y[^<>]+90%/g, ptmiss:/misses the attack against you./g,
+        ptevade:/(>You evade| uses [^<>]+evade the attack.)/g, ptparry:/(>You parry| uses [^<>]+parry the attack.)/g, ptblock:/(>You block| uses [^<>]+block the attack.)/g,
         counter:/>You counter/g, spellinfo:/\('([\w\s-]+)'.*, (\d+)\)/, crit:/(You crit| crits | blasts )/,
         miss:/(You evade|You block|You parry| evades | parries | resists | misses | fails )/, attack:/(You hit|You crit|Arcane Blow)/,
         spell:/(You cast| hits | crits | blasts |gains the effect)/, recovery:/(You are healed|Recovered | restores |You drain)/,
-        round:/Round (\d+) \/ (\d+)/, drop:/\[(.+)\]/, crystal:/(?:(\d+)x )?Crystal/, crystals:/Crystal of (\w+)/, credit:/(\d+) Credit/,
+        round:/Round (\d+) \/ (\d+)/, drops: /\S+ <span style="color:.{7}">\[[^<>]+\](<\/span><\/td><\/tr><tr><td class="tlb">A t)*/g,
+        drop:/(\S+) \<.*#(.{6}).*\[(.*)\](.)*/, crystal:/(?:(\d+)x )?Crystal/, crystals:/Crystal of (\w+)/, credit:/(\d+) Credit/, reward: /gain (\d+) Credit/,
         exp:/You gain (\d+) EXP/, proficiencies:/\d+\.\d+ points of [^<>]+ proficiency/g, proficiency:/(\d+\.\d+) points of ([^<>]+) proficiency/,
         quality:[/\[\]/,/\[Peerless/,/\[(Legendary|Peerless)/,/\[(Magnificent|Legendary|Peerless)/,/\[(Exquisite|Magnificent|Legendary|Peerless)/,
                  /\[(Superior|Exquisite|Magnificent|Legendary|Peerless)/,/\[(Average|Superior|Exquisite|Magnificent|Legendary|Peerless)/,
@@ -704,7 +774,6 @@ const damage = document.getElementById('2501') ? 'Arcane Focus' : 'Heartseeker',
         defaultstring:/"c\d\w"/g, defaultletter:/"c\d(\w)"/, whitespace:/(\s{2,}|\n)/g, break:/;/g, number:/\d+/, profile:/settings":{"/,
         itemuse:/Use\(/, hoveruse:/HoverAction\([^;]*Use\(/ },
     settingsData = [
-        ['ssd','b','write temporary data to disk only when a page reload is expected. manual reload will result in data loss'],
         ['ui settings','h'],
         ['cfgButton','b','show button to access settings and switch profiles during battle'],
         ['mpboost','f','mp boost from abilities and capacitor'],
@@ -731,20 +800,15 @@ const damage = document.getElementById('2501') ? 'Arcane Focus' : 'Heartseeker',
         ['usableBlink','b','mana and spirit gems and potions on the quickbar blink when usable to their full effect'],
         ['logColours','b','add colour highlights to the battle log'],
         ['turnDividers','b','add horizontal row between turns'],
+        ['logPasteover','b','add last turn of previous round to new round log. requires round advance via ajax'],
         ['hideLog','b','hide the battle log'],
         ['maxVitals','b','show maximum player vitals'],
         ['showMonsterHP','b','display current and max hp of monsters'],
         ['shortenHPbars','b','shorten monster hp bars relative to their max hp'],
         ['monsterNumbers','b','show monster numbers instead of letters'],
-        ['monsterInfo','b',"show monster data from decondelite's database"],
-        ['infoAboveBars','b','show info when new round loads and it overlaps with quickbar/monsterbar'],
-        ['submitScans','b','submit scans',
-         "automatically submit data to decondelite's database when scanning<br>" +
-         'requires scanned monster to be unaffected by mitigation reduction'],
-        ['scanTime','i',"monsters that haven't been scanned in this number of days will be highlighted"],
         ['monsterKeywords','s','monster keywords',
-         'highlight monsters where the info (name, trainer, id, etc.) matches this expression, set to false to disable<br>' +
-         'example: /(Meiling|"plvl":2250|"monsterId":70699|Undead.*Crushing)/',750],
+         'highlight monsters where the name, id or max hp match this expression, set to false to disable<br>' +
+         'example: /(Meiling|MID=70699|HP=243060)/',750],
         ['ajaxRound','b','advance to next round using ajax. set to false if you use other scripts that do not support this'],
         ['ajaxIntervals','i','set to 0 or a higher number if you experience weird flashing of expiring effects'],
         ['noPopup','b','skip end of round popup'],
@@ -821,9 +885,9 @@ const damage = document.getElementById('2501') ? 'Arcane Focus' : 'Heartseeker',
          'add skill/spell icons next to monsters, for single use or tap to engage/tap elsewhere to disengage, single skills and spell rotations<br>' +
          'leave empty to disable. example: first parameter is false for single use or true to engage, followed by skill/spell IDs or leave empty for attack<br>' +
          '[ [true],                    - engage attack<br>' +
-         "  [false,'213'],             - single cast of imperil<br>" +
-         "  [false,'212'],             - single cast of weaken<br>" +
-         "  [true,'163','162','161'] ] - engage dark spell rotation",750],
+         '  [false,"213"],             - single cast of imperil<br>' +
+         '  [false,"212"],             - single cast of weaken<br>' +
+         '  [true,"163","162","161"] ] - engage dark spell rotation',750],
         ['tracking settings','h'],
         ['trackDrops','b','show total numbers of drops and exp at end of battle'],
         ['detailedDroplog','b','list each drop type individually, excluding crystals and equipment below your quality cutoff'],
@@ -903,11 +967,15 @@ function Enhance() {
     if ( document.getElementById('gay_sex') ) return;
     Riddlemaster();
     if ( !(log = document.getElementById('textlog')) ) return;
+    if ( cfg.logPasteover && turn ) {
+        log.firstChild.innerHTML += '<tr><td class="tls"></td></tr>' + turn;
+        FormatLog(); }
     monsters = document.getElementsByClassName('btm1');
     if ( cfg.alertBackground ) {
         csp = document.getElementById('csp'); }
     interruptHover = !cfg.startRoundWithHover;
-    cursor = -1;
+    if ( cursor >= 0 ) ClearTarget();
+    if ( cursor >= monsters.length ) cursor = monsters.length - 1;
     document.addEventListener('keydown', handleKeys, true);
     document.addEventListener('keyup', handleKeyup, true);
     if ( cfg.clearRound ) {
@@ -932,20 +1000,19 @@ function Enhance() {
             alert('You have transgressed against your God and your fellow Man. God has charged me with your redemption. ' +
                   'You are hereby Exiled to Wraeclast where, it is hoped, you shall come to repent your Sins, and make your peace with your beloved Father.'); return; }
         cfg.minSP = cfg.minSP == 'auto' ? 0.5-0.5*cfg.spboost/(cfg.spboost+100) : cfg.minSP;
-        cfg.alertBuffs = eval(cfg.alertBuffs);
-        cfg.monsterKeywords = eval(cfg.monsterKeywords);
-        cfg.clickLeft = eval(cfg.clickLeft);
-        cfg.clickMiddle = eval(cfg.clickMiddle);
-        cfg.clickRight = eval(cfg.clickRight);
-        cfg.wheelUp = eval(cfg.wheelUp);
-        cfg.wheelDown = eval(cfg.wheelDown);
-        cfg.wheelLeft = eval(cfg.wheelLeft);
-        cfg.wheelRight = eval(cfg.wheelRight);
-        cfg.hoverAction = eval(cfg.hoverAction);
-        cfg.hoverShiftAction = eval(cfg.hoverShiftAction);
-        cfg.hoverCtrlAction = eval(cfg.hoverCtrlAction);
-        cfg.hoverAltAction = eval(cfg.hoverAltAction);
-        eval(cfg.bind);
+        const evals = ['alertBuffs', 'monsterKeywords', 'clickLeft', 'clickMiddle', 'clickRight', 'wheelUp', 'wheelDown', 'wheelLeft', 'wheelRight',
+                       'hoverAction', 'hoverShiftAction', 'hoverCtrlAction', 'hoverAltAction'];
+        for ( var i = 0; i < evals.length; i++ ) {
+            try {
+                cfg[evals[i]] = eval(cfg[evals[i]]); }
+            catch ( error ) {
+                cfg[evals[i]] = false;
+                alert('invalid ' + evals[i] + ' format. option disabled'); }}
+        try {
+            eval(cfg.bind); }
+        catch ( error ) {
+            bindings = [];
+            alert('invalid key bindings. option disabled'); }
         var style = document.createElement('style');
         style.id = 'homosex';
         style.innerHTML = '.btm6 { min-width: 195px; top: 0 !important; padding: 18px 3px 3px 1px !important; }' +
@@ -988,30 +1055,10 @@ function Enhance() {
             (cfg.colours.effect ? '.effect { color: ' + cfg.colours.effect + '; }' : '') + (cfg.colours.spirit ? '.spirit { color: ' + cfg.colours.spirit + '; }' : '') +
             (cfg.colours.proficiency ? '.proficiency { color: ' + cfg.colours.proficiency + '; }' : '') +
             '#profbar { position: absolute; left: ' + (cfg.profbarInMainpane ? '1140' : '1240') + 'px; top: 50px; z-index: 1; }' +
-            '#profbar td:nth-child(1) { text-align: right; } #profbar td:nth-child(2) { text-align: left; }' +
-            '.minfo { display: table; position: absolute; z-index: 2; left: ' + (cfg.condenseLeft ? '379' : '1067') + 'px; min-width: 170px; text-align: left;' +
-            'font-size: 9px; font-weight: bold; background: black; border-radius: 5px; }  .minfo > table { display: ruby; } .minfo td { padding: 1px; }' +
-            '#minfo_0 { top: ' + ((cfg.showMonsterHP ? 61 : 55)+(cfg.condenseLeft || cfg.vitalsAboveMonsters ? 65 : 0)) + 'px; }' +
-            '#minfo_1 { top: ' + ((cfg.showMonsterHP ? 119 : 113)+(cfg.condenseLeft || cfg.vitalsAboveMonsters ? 65 : 0)) + 'px; }' +
-            '#minfo_2 { top: ' + ((cfg.showMonsterHP ? 177 : 171)+(cfg.condenseLeft || cfg.vitalsAboveMonsters ? 65 : 0)) + 'px; }' +
-            '#minfo_3 { top: ' + ((cfg.showMonsterHP ? 235 : 229)+(cfg.condenseLeft || cfg.vitalsAboveMonsters ? 65 : 0)) + 'px; }' +
-            '#minfo_4 { top: ' + ((cfg.showMonsterHP ? 293 : 287)+(cfg.condenseLeft || cfg.vitalsAboveMonsters ? 65 : 0)) + 'px; }' +
-            '#minfo_5 { top: ' + ((cfg.showMonsterHP ? 351 : 345)+(cfg.condenseLeft || cfg.vitalsAboveMonsters ? 65 : 0)) + 'px; }' +
-            '#minfo_6 { top: ' + ((cfg.showMonsterHP ? 409 : 403)+(cfg.condenseLeft || cfg.vitalsAboveMonsters ? 65 : 0)) + 'px; }' +
-            '#minfo_7 { top: ' + ((cfg.showMonsterHP ? 467 : 461)+(cfg.condenseLeft || cfg.vitalsAboveMonsters ? 65 : 0)) + 'px; }' +
-            '#minfo_8 { top: ' + ((cfg.showMonsterHP ? 525 : 519)+(cfg.condenseLeft || cfg.vitalsAboveMonsters ? 65 : 0)) + 'px; }' +
-            '#minfo_9 { top: ' + ((cfg.showMonsterHP ? 583 : 577)+(cfg.condenseLeft || cfg.vitalsAboveMonsters ? 65 : 0)) + 'px; }' +
-            '.minfo tr:nth-child(1) > td:nth-child(1) { color: red; } .minfo tr:nth-child(2) > td:nth-child(1) { color: skyblue; }' +
-            '.minfo tr:nth-child(3) > td:nth-child(1) { color: yellow; } .minfo tr:nth-child(1) > td:nth-child(2) { color: limegreen; }' +
-            '.minfo tr:nth-child(2) > td:nth-child(2) { color: white; } .minfo tr:nth-child(3) > td:nth-child(2) { color: grey; }' +
-            '.minfo tr:nth-child(1) > td:nth-child(3) { color: khaki; } .minfo tr:nth-child(2) > td:nth-child(3) { color: bisque; }' +
-            '.minfo tr:nth-child(3) > td:nth-child(3) { color: lightcyan; } .mbar { display: flex; position: absolute; left: 1075px; }' +
-            '.mbar > div { cursor: pointer; } #barinfo { position: absolute; top: 684px; left: ' + (cfg.condenseLeft ? '527' : '1218') +
-            'px; cursor: pointer; background: ' + cfg.colours.default + '; z-index: 2; width: 20px; height: 20px; font-size: 16px; }' +
-            '#cfgbutton { position: absolute; top: 684px; left: ' + (cfg.condenseLeft ? (cfg.monsterInfo ? '507' : '527') :
-            (cfg.monsterInfo && (cfg.quickbarBesideMonsters || cfg.monsterBar[0]) ? '1198' : '1218')) +
-            'px; cursor: pointer; background: ' + cfg.colours.default + '; z-index: 3; width: 20px; height: 20px; font-size: 18px; }' +
-            '#cfgbutton:hover #mbprofile { visibility: visible; } #mbprofile { visibility: hidden; position: absolute; right: 0; bottom: 20px;' +
+            '#profbar td:nth-child(1) { text-align: right; } #profbar td:nth-child(2) { text-align: left; } .mbar { display: flex; position: absolute; left: 1075px; }' +
+            '.mbar > div { cursor: pointer; } #cfgbutton { position: absolute; top: 686px; left: ' + (cfg.condenseLeft ? '529' : '1220') +
+            'px; cursor: pointer; background: ' + cfg.colours.default + '; z-index: 3; width: 18px; height: 18px; font-size: 17px; }' +
+            '#cfgbutton:hover #mbprofile { visibility: visible; } #mbprofile { visibility: hidden; position: absolute; right: 0; bottom: 18px;' +
             'width: max-content; height: max-content; padding: 5px; background: ' + cfg.colours.default + '; border: 1px solid #5C0D11; }' +
             '#mbar_0 { top: ' + ((cfg.showMonsterHP ? 61 : 58)+(cfg.vitalsAboveMonsters ? 65 : 0)) + 'px; }' +
             '#mbar_1 { top: ' + ((cfg.showMonsterHP ? 119 : 116)+(cfg.vitalsAboveMonsters ? 65 : 0)) + 'px; }' +
@@ -1040,7 +1087,6 @@ function Enhance() {
     MonsterBar();
     ShowCooldowns();
     MaxVitals();
-    MonsterInfo();
     Profbar();
     ShowRound();
     CfgButton(); }
@@ -1060,15 +1106,22 @@ function Observe() {
         ShowDrops(true);
         ShowUsage();
         ShowDamage();
+        window.dispatchEvent(new CustomEvent("battleEnd", {"detail":{timelog,combatlog,droplog}}));
+        window.removeEventListener('beforeunload', StoreTmp);
         var btcp, equip = document.querySelector('span[style$="#FF0000"]');
-        localStorage.removeItem('HVmonsterData');
-        localStorage.removeItem('HVtimelog');
-        localStorage.removeItem('HVvitals');
+        localStorage.removeItem('HVmonsterData' + isekai);
+        localStorage.removeItem('HVtimelog' + isekai);
+        localStorage.removeItem('HVvitals' + isekai);
+        localStorage.removeItem('HVcursor' + isekai);
         if ( cfg.deleteDropLog == 2 ) {
-            localStorage.removeItem('HVtrackdrops'); }
+            localStorage.removeItem('HVtrackdrops' + isekai); }
+        else if ( cfg.trackDrops || cfg.trackProficiency || cfg.proficiencySidebar ) {
+            localStorage['HVtrackdrops' + isekai] = JSON.stringify(droplog); }
         if ( cfg.deleteCombatLog == 2 ) {
-            localStorage.removeItem('HVcombatlog'); }
-        document.getElementById('homosex').innerHTML += '.minfo, .mbar, #barinfo, #cfgbutton { display: none !important; }';
+            localStorage.removeItem('HVcombatlog' + isekai); }
+        else if ( cfg.trackDamage || cfg.trackUsage ) {
+            localStorage['HVcombatlog' + isekai] = JSON.stringify(combatlog); }
+        document.getElementById('homosex').innerHTML += '.mbar, #cfgbutton { display: none !important; }';
         if ( cfg.noPopup && (btcp = document.getElementById('btcp')) && !cfg.stopAtBattleEnd &&
              (!cfg.stopOnEquipDrop || !equip) ) {
             btcp.click();
@@ -1094,10 +1147,7 @@ function Riddlemaster() {
     var bot;
     if ( !cfg.clickableRiddlemaster || !(bot = document.getElementById('riddlebot')) ) return;
     if ( cfg.trackSpeed ) {
-        timelog.horse = (timelog.horse ? timelog.horse : 0) + 1;
-        if ( !cfg.ssd ) {
-            localStorage.HVtimelog = JSON.stringify(timelog); }}
-    StoreTmp();
+        timelog.horse = (timelog.horse ? timelog.horse : 0) + 1;}
     if ( !document.getElementById('buttsex') ) {
         var style = document.createElement('style');
         style.id = 'buttsex';
@@ -1200,7 +1250,7 @@ function Durations() {
         effects = pane.getElementsByTagName('img'), n = effects.length;
     while ( n-- > 0 ) {
         if ( (duration = effects[n].getAttribute('onmouseover').match(regexp.duration)) ) {
-            if ( duration[3] < 2 && cfg.alertBuffs.test(effects[n].src) ) {
+            if ( cfg.alertBuffs && duration[3] < 2 && effects[n].src.indexOf('channeling.png') < 0 && cfg.alertBuffs.test(effects[n].src) ) {
                 alert = true; }
             if ( cfg.showDurations ) {
                 div = document.createElement('div');
@@ -1243,106 +1293,27 @@ function Durations() {
                 effects[n].parentNode.insertBefore(div, effects[n]); }}}}
 
 function GetMonsterData() {
-    if ( !cfg.showMonsterHP && !cfg.shortenHPbars && !cfg.monsterInfo && !cfg.submitScans && !cfg.monsterKeywords ) return;
-    var local, data, monster, div;
-    if ( cfg.monsterInfo && (cfg.quickbarBesideMonsters || cfg.condenseLeft) ) {
-        if ( cfg.infoAboveBars ) {
-            document.getElementById('quickbar').style.display = 'none'; }
-        div = document.createElement('div');
-        div.id = 'barinfo';
-        div.innerHTML = '\uD83D\uDC41';
-        div.onclick = function() {
-            var info = document.getElementById('quickbar').style.display == 'none', minfo;
-            document.getElementById('quickbar').style.display = info ? 'block' : 'none';
-            for ( i = 0; i < monsters.length; i++ ) {
-                if ( (minfo = document.getElementById('minfo_' + i)) ) {
-                    minfo.style.display = info ? 'none' : 'table'; }}};
-        document.body.appendChild(div); }
-    if ( (local = localStorage.HVmonsterData) ) {
+    if ( !cfg.showMonsterHP && !cfg.shortenHPbars && !cfg.monsterKeywords ) return;
+    var local, data, monster;
+    if ( (local = localStorage['HVmonsterData' + isekai]) ) {
         monsterData = JSON.parse(local); }
     else {
+        monsterData.info = [];
         monsterData.id = [];
         monsterData.name = [];
         monsterData.hp = [];
-        monsterData.bg = [];
-        monsterData.recent = [];
         monsterData.highlight = [];
-        monsterData.info = [];
         monsterData.hp[10] = 0;
         if ( (data = log.innerHTML.match(regexp.monsters)) ) {
             for ( var i = 0; i < monsters.length; i++ ) {
                 monster = data[monsters.length-i-1].match(regexp.monster);
+                monsterData.info[i] = monster[0];
                 monsterData.id[i] = parseInt(monster[1]);
                 monsterData.name[i] = monster[2];
                 monsterData.hp[i] = parseInt(monster[3]);
-                monsterData.bg[i] = monsters[i].querySelector('.btm2').style.background;
-                monsterData.recent[i] = true;
+                monsterData.highlight[i] = cfg.monsterKeywords && monsters[i].hasAttribute('onclick') && cfg.monsterKeywords.test(monster[0]);
                 if ( !monsters[i].querySelector('.btm2[style]') ) {
-                    monsterData.hp[10] = monsterData.hp[i] > monsterData.hp[10] ? monsterData.hp[i] : monsterData.hp[10]; }}
-            if ( cfg.monsterInfo || cfg.submitScans || cfg.monsterKeywords ) {
-                processing = true;
-                var xmlhttp = new XMLHttpRequest(),
-                    request = 'https://api.niblseed.com:8080/hentaiverse/monsters/' + monsterData.id[0];
-                for ( i = 1; i < monsters.length; i++ ) {
-                    request += ',' + monsterData.id[i]; }
-                xmlhttp.onreadystatechange = function() {
-                    if ( xmlhttp.readyState == 4 && xmlhttp.status == 200 ) {
-                        var response = JSON.parse(xmlhttp.responseText), content, index, update,
-                            date = new Date(), year = date.getUTCFullYear(), month = date.getUTCMonth() + 1, day = date.getUTCDate();
-                        if ( response.status == 'OK' && (content = response.content) ) {
-                            for ( i = 0; i < content.length; i++ ) {
-                                index = monsterData.id.indexOf(content[i].monsterId);
-                                if ( cfg.monsterKeywords ) {
-                                    monsterData.highlight[index] = cfg.monsterKeywords.test(JSON.stringify(content[i])); }
-                                monsterData.info[index] = content[i];
-                                update = content[i].lastUpdate.match(regexp.date);
-                                monsterData.recent[index] = !cfg.submitScans || (monsterData.name[index] == content[i].monsterName &&
-                                    (content[i].trainer === '' || content[i].plvl == 2250 ||(year - parseInt(update[1])) * 365 +
-                                    (month - parseInt(update[2])) * 31 + day - parseInt(update[3]) < cfg.scanTime)); }
-                            processing = false;
-                            MonsterInfo();
-                            if ( !cfg.ssd ) {
-                                localStorage.HVmonsterData = JSON.stringify(monsterData); }}}};
-                xmlhttp.open('GET', request, true);
-                xmlhttp.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
-                xmlhttp.send(); }
-            if ( !cfg.ssd ) {
-                localStorage.HVmonsterData = JSON.stringify(monsterData); }}}}
-
-function MonsterInfo() {
-    if ( (!cfg.monsterInfo && !cfg.submitScans && !cfg.monsterKeywords) || processing ) return;
-    var info, onc, minfo;
-    for ( var i = 0; i < monsters.length; i++ ) {
-        if ( (info = monsterData.info[i]) ) {
-            onc = monsters[i].hasAttribute('onclick');
-            minfo = document.getElementById('minfo_' + i);
-            monsters[i].querySelector('.btm2').style.background =
-                !monsterData.recent[i] && onc ? cfg.colours.scan : (cfg.monsterKeywords && monsterData.highlight[i] && onc ? cfg.colours.monster : monsterData.bg[i]);
-            if ( cfg.monsterInfo ) {
-                if ( !minfo ) {
-                    minfo = document.createElement('div');
-                    minfo.id = 'minfo_' + i;
-                    minfo.className = 'minfo';
-                    if ( (cfg.quickbarBesideMonsters || cfg.condenseLeft || cfg.monsterBar[0]) && !cfg.infoAboveBars ) {
-                        minfo.style.display = 'none'; }
-                    document.body.appendChild(minfo); }
-                minfo.innerHTML = '<table><tbody>' +
-                    '<tr><td>' + (info.fire < 0 ? '' : '+') + info.fire + '</td>' +
-                    '<td>' + (info.wind < 0 ? '' : '+') + info.wind + '</td>' +
-                    '<td>C: ' + (info.crushing < 0 ? '' : '+') + info.crushing + '</td>' +
-                    '<td>' + info.monsterClass + ' / ' + info.attack + '</td></tr>' +
-                    '<tr><td>' + (info.cold < 0 ? '' : '+') + info.cold + '</td>' +
-                    '<td>' + (info.holy < 0 ? '' : '+') + info.holy + '</td>' +
-                    '<td>S: ' + (info.slashing < 0 ? '' : '+') + info.slashing + '</td>' +
-                    '<td>PL: ' + info.plvl + ' ID: ' + info.monsterId + '</td></tr>' +
-                    '<tr><td>' + (info.elec < 0 ? '' : '+') + info.elec + '</td>' +
-                    '<td>' + (info.dark < 0 ? '' : '+') + info.dark + '</td>' +
-                    '<td>P: ' + (info.piercing < 0 ? '' : '+') + info.piercing + '</td>' +
-                    '<td>' + info.trainer + '</td></tr></tbody></table>';
-                minfo.style.color = cfg.monsterKeywords && monsterData.highlight[i] ? cfg.colours.monster : (monsterData.recent[i] ? 'white' : cfg.colours.scan); }}
-        else if ( cfg.submitScans && monsters[i].hasAttribute('onclick') ) {
-            monsterData.recent[i] = false;
-            monsters[i].querySelector('.btm2').style.background = cfg.colours.scan; }}}
+                    monsterData.hp[10] = monsterData.hp[i] > monsterData.hp[10] ? monsterData.hp[i] : monsterData.hp[10]; }}}}}
 
 function Monsters() {
     var monster;
@@ -1357,9 +1328,7 @@ function Monsters() {
             if ( cursor >= 0 ) Cursor();
             if ( target === i && (cfg.hoverAction || override) && !interruptHover && !interruptAlert ) {
                 Hover(); }
-            if ( cfg.submitScans && monsterData.recent[i] === false ) {
-                monster.querySelector('.btm2').style.background = cfg.colours.scan; }
-            else if ( cfg.monsterKeywords && monsterData.highlight[i] ) {
+            if ( monsterData.highlight && monsterData.highlight[i] ) {
                 monster.querySelector('.btm2').style.background = cfg.colours.monster; }
             if ( (cfg.showMonsterHP || cfg.shortenHPbars) && monsterData.hp[i] ) {
                 var bar = monster.querySelector('img[src$="nbargreen.png"]'),
@@ -1367,7 +1336,7 @@ function Monsters() {
                 if ( cfg.showMonsterHP && !cfg.quickbarBesideMonsters && !cfg.condenseLeft ) {
                     var div = monster.appendChild(document.createElement('div'));
                     div.className = 'monsterhp';
-                    div.innerHTML = 'HP: ' + Math.round(ratio * monsterData.hp[i]).toLocaleString() + ' / ' + monsterData.hp[i].toLocaleString(); }
+                    div.innerHTML = 'HP: ' + Math.max(1, Math.round(ratio * monsterData.hp[i])).toLocaleString() + ' / ' + monsterData.hp[i].toLocaleString(); }
                 if ( cfg.shortenHPbars && monsterData.hp[i] < monsterData.hp[10] ) {
                     var factor = monsterData.hp[i] / monsterData.hp[10],
                         border = monster.querySelector('img[src$="nbarfg.png"]'),
@@ -1390,11 +1359,7 @@ function Monsters() {
 function Hover() {
     if ( hovering ) return;
     hovering = true;
-    if ( impulse ) {
-        impulse();
-        done = true;
-        impulse = false; }
-    else if ( override ) {
+    if ( override ) {
         override(); }
     else if ( shiftHeld && cfg.hoverShiftAction ) {
         cfg.hoverShiftAction(); }
@@ -1404,6 +1369,10 @@ function Hover() {
         cfg.hoverAltAction(); }
     else {
         cfg.hoverAction(); }
+    if ( impulse ) {
+        impulse();
+        done = true;
+        impulse = false; }
     monsters[target].click(); }
 
 function SetTarget(i) { return function() {
@@ -1445,11 +1414,12 @@ function MouseEngage(e) {
     else if ( e.which == 2 ) override = cfg.clickMiddle;
     else if ( e.which == 3 ) override = cfg.clickRight; }
 
-function Cursor() { this.battle.hover_target(monsters[cursor]); }
+function Cursor() {
+    this.battle.hover_target(monsters[cursor]); }
 
 function Confirm() {
     var ed, flee;
-    if ( cfg.edConfirm && (ed = document.querySelector('div[onclick][onmouseover*="item(11401)"]')) ) {
+    if ( cfg.edConfirm && (ed = document.querySelector('div[onclick][onmouseover*="item(11401)"]:not([onclick*=confirm])')) ) {
         ed.setAttribute('onclick', 'if ( confirm("Are you sure you want to use Energy Drink?") ) {' + ed.getAttribute('onclick') + '}'); }
     if ( cfg.fleeConfirm && (flee = document.getElementById('1001')) ) {
         flee.setAttribute('onclick', 'if ( confirm("Tired already? I guess we can play forever some other time...") ) {' + flee.getAttribute('onclick') + '}'); }
@@ -1538,8 +1508,6 @@ function MonsterBar() {
         mbar = document.createElement('div');
         mbar.id = 'mbar_' + i;
         mbar.className = 'mbar';
-        if ( cfg.monsterInfo && cfg.infoAboveBars ) {
-            mbar.style.display = 'none'; }
         for ( var j = 0; (j < 3 || (j < 4 && !cfg.spacedBar)) && j < cfg.monsterBar.length; j++ ) {
             div = document.createElement('div');
             div.className = 'btqs mbs';
@@ -1559,18 +1527,7 @@ function MonsterBar() {
             else {
                 div.onclick = BarAction(i, cfg.monsterBar[j]); }
             mbar.appendChild(div); }
-        document.body.appendChild(mbar); }
-    if ( cfg.monsterInfo ) {
-        div = document.createElement('div');
-        div.id = 'barinfo';
-        div.innerHTML = '\uD83D\uDC41';
-        div.onclick = function() {
-            var info = document.getElementById('mbar_0').style.display == 'none', minfo;
-            for ( i = 0; i < monsters.length; i++ ) {
-                document.getElementById('mbar_' + i).style.display = info ? 'flex' : 'none';
-                if ( (minfo = document.getElementById('minfo_' + i)) ) {
-                    minfo.style.display = info ? 'none' : 'table'; }}};
-        document.body.appendChild(div); }}
+        document.body.appendChild(mbar); }}
 
 function Disengage() { target = false; override = false; }
 
@@ -1589,47 +1546,18 @@ function BarAction(i, actions) {
 function StrongestBar(actions) { return function() { var n = actions.length; while ( n-- > 1 ) document.getElementById(actions[n]).click(); };}
 
 function ProcessLog() {
-    if ( !cfg.showCooldowns && !cfg.trackSpeed && !cfg.submitScans && !cfg.trackDamage && !cfg.trackUsage ) return;
-    if ( !timelog.startTime && cfg.trackSpeed ) timelog.startTime = Date.now();
-    var turn = log.innerHTML.match(regexp.turn);
+    turn = log.innerHTML.match(regexp.turn);
     if ( turn ) turn = turn[0]; else return;
+    if ( !cfg.showCooldowns && !cfg.trackSpeed && !cfg.trackDamage && !cfg.trackUsage ) return;
+    if ( !timelog.startTime && cfg.trackSpeed ) timelog.startTime = Date.now();
     var action = turn.match(regexp.action);
     if ( action ) action = action[1]; else return;
     timelog.action++;
     if ( !regexp.zeroturn.test(action) ) timelog.turn++;
-    var use = action.match(regexp.use), scan, miss, counter;
+    var use = action.match(regexp.use), miss, counter;
     if ( use ) {
         use = use[2];
         if ( cfg.showCooldowns ) timelog.lastuse[use] = timelog.turn;
-        if ( cfg.submitScans && use == 'Scan' && (scan = turn.match(regexp.scan)) ) {
-            var mnum = monsterData.name.indexOf(scan[1]);
-            if ( !regexp.debuff.test(monsters[mnum].innerHTML) ) {
-                var xmlhttp = new XMLHttpRequest(), payload = {};
-                payload.monsterId = monsterData.id[mnum];
-                payload.monsterName = scan[1];
-                payload.monsterClass = scan[2];
-                payload.plvl = scan[4] ? parseInt(scan[4]) : 0;
-                payload.trainer = scan[5];
-                payload.attack = scan[6];
-                payload.fire = (scan[7] == '+' ? 1 : -1) * parseInt(scan[8]);
-                payload.cold = (scan[9] == '+' ? 1 : -1) * parseInt(scan[10]);
-                payload.elec = (scan[11] == '+' ? 1 : -1) * parseInt(scan[12]);
-                payload.wind = (scan[13] == '+' ? 1 : -1) * parseInt(scan[14]);
-                payload.holy = (scan[15] == '+' ? 1 : -1) * parseInt(scan[16]);
-                payload.dark = (scan[17] == '+' ? 1 : -1) * parseInt(scan[18]);
-                payload.crushing = (scan[19] == '+' ? 1 : -1) * parseInt(scan[20]);
-                payload.slashing = (scan[21] == '+' ? 1 : -1) * parseInt(scan[22]);
-                payload.piercing = (scan[23] == '+' ? 1 : -1) * parseInt(scan[24]);
-                xmlhttp.open('PUT', 'https://api.niblseed.com:8080/hentaiverse/monster', true);
-                xmlhttp.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
-                xmlhttp.send(JSON.stringify(payload));
-                var date = new Date(), year = date.getFullYear(), month = date.getMonth() + 1, day = date.getDate();
-                payload.lastUpdate = year + '-' + (month > 9 ? '' : '0') + month + '-' + (day > 9 ? '' : '0') + day;
-                monsterData.info[mnum] = payload;
-                monsterData.recent[mnum] = true;
-                MonsterInfo();
-                if ( !cfg.ssd ) {
-                    localStorage.HVmonsterData = JSON.stringify(monsterData); }}}
         if ( cfg.trackUsage ) combatlog.used[use] = (combatlog.used[use] ? combatlog.used[use] : 0) + 1; }
     else if ( !cfg.trackUsage ) {}
     else if ( action.indexOf('Spirit Stance') > -1 ) combatlog.used.Spirit = (combatlog.used.Spirit ? combatlog.used.Spirit : 0) + 1;
@@ -1680,13 +1608,25 @@ function ProcessLog() {
                         combatlog.pdealt[data[2]] = (combatlog.pdealt[data[2]] ? combatlog.pdealt[data[2]] : 0) + parseInt(data[1]); }
                     else {
                         combatlog.mdealt[data[2]] = (combatlog.mdealt[data[2]] ? combatlog.mdealt[data[2]] : 0) + parseInt(data[1]); }}}}
-        if ( regexp.damagespell.test(action) && (miss = turn.match(regexp.mmiss)) ) combatlog.mdealt.miss += miss.length;
-        if ( (miss = turn.match(regexp.pmiss)) ) combatlog.pdealt.miss += miss.length;
-        if ( (miss = turn.match(regexp.mevade)) ) combatlog.mtaken.miss += miss.length;
-        if ( (miss = turn.match(regexp.pevade)) ) combatlog.ptaken.miss += miss.length; }
-    if ( cfg.trackUsage && (counter = turn.match(regexp.counter)) ) combatlog.used.Counter = (combatlog.used.Counter ? combatlog.used.Counter : 0) + counter.length;
-    if ( !cfg.ssd && (cfg.showCooldowns || cfg.trackSpeed) ) localStorage.HVtimelog = JSON.stringify(timelog);
-    if ( !cfg.ssd && (cfg.trackDamage || cfg.trackUsage) ) localStorage.HVcombatlog = JSON.stringify(combatlog); }
+        if ( (miss = turn.match(regexp.mdmiss)) ) combatlog.mdealt.miss += miss.length;
+        if ( (miss = turn.match(regexp.mdevade)) ) combatlog.mdealt.evade += miss.length;
+        if ( (miss = turn.match(regexp.mdresist)) ) combatlog.mdealt.resist += miss.length;
+        if ( (miss = turn.match(regexp.md50)) ) combatlog.mdealt.r50 += miss.length;
+        if ( (miss = turn.match(regexp.md75)) ) combatlog.mdealt.r75 += miss.length;
+        if ( (miss = turn.match(regexp.md90)) ) combatlog.mdealt.r90 += miss.length;
+        if ( (miss = turn.match(regexp.pdmiss)) ) combatlog.pdealt.miss += miss.length;
+        if ( (miss = turn.match(regexp.pdevade)) ) combatlog.pdealt.evade += miss.length;
+        if ( (miss = turn.match(regexp.pdparry)) ) combatlog.pdealt.parry += miss.length;
+        if ( (miss = turn.match(regexp.mtevade)) ) combatlog.mtaken.evade += miss.length;
+        if ( (miss = turn.match(regexp.mtblock)) ) combatlog.mtaken.block += miss.length;
+        if ( (miss = turn.match(regexp.mt50)) ) combatlog.mtaken.r50 += miss.length;
+        if ( (miss = turn.match(regexp.mt75)) ) combatlog.mtaken.r75 += miss.length;
+        if ( (miss = turn.match(regexp.mt90)) ) combatlog.mtaken.r90 += miss.length;
+        if ( (miss = turn.match(regexp.ptmiss)) ) combatlog.ptaken.miss += miss.length;
+        if ( (miss = turn.match(regexp.ptevade)) ) combatlog.ptaken.evade += miss.length;
+        if ( (miss = turn.match(regexp.ptparry)) ) combatlog.ptaken.parry += miss.length;
+        if ( (miss = turn.match(regexp.ptblock)) ) combatlog.ptaken.block += miss.length; }
+    if ( cfg.trackUsage && (counter = turn.match(regexp.counter)) ) combatlog.used.Counter = (combatlog.used.Counter ? combatlog.used.Counter : 0) + counter.length; }
 
 function ShowCooldowns() {
     if ( !cfg.showCooldowns ) return;
@@ -1716,8 +1656,7 @@ function MaxVitals() {
     if ( spv > vitals.sp ) { vitals.sp = spv; changed = true; }
     hpd.innerHTML = hpv + '/' + vitals.hp;
     mpd.innerHTML = mpv + '/' + vitals.mp;
-    spd.innerHTML = spv + '/' + vitals.sp;
-    if ( !cfg.ssd && changed ) localStorage.HVvitals = JSON.stringify(vitals); }
+    spd.innerHTML = spv + '/' + vitals.sp; }
 
 function FormatLog() {
     if ( !cfg.logColours && !cfg.turnDividers ) return;
@@ -1756,9 +1695,7 @@ function ShowRound() {
     if ( !cfg.showRound ) return;
     if ( !timelog.rounds && (rounds = log.innerHTML.match(regexp.round)) ) {
         timelog.round = rounds[1];
-        timelog.rounds = rounds[2];
-        if ( !cfg.ssd ) {
-            localStorage.HVtimelog = JSON.stringify(timelog); }}
+        timelog.rounds = rounds[2]; }
     if ( timelog.rounds ) {
         div.innerHTML = (cfg.bigRoundCounter ? '' : 'Round ') + timelog.round.toLocaleString() + ' / ' + timelog.rounds.toLocaleString();
         if ( cfg.bigRoundCounter ) {
@@ -1771,114 +1708,147 @@ function CfgButton() {
     div.innerHTML = '\u2699';
     div.onclick = Settings;
     document.body.appendChild(div);
-    if ( regexp.profile.test(JSON.stringify(cfg.persona)) ) {
+    var hasper = regexp.profile.test(JSON.stringify(cfg.persona));
+    var hasisk = regexp.profile.test(JSON.stringify(cfg.isekai.persona)) || (hasper && cfg.isekaiInherit);
+    if ( (!isekai && hasper) || (isekai && hasisk) ) {
         var menu = div.appendChild(document.createElement('div'));
-        const Set = function(i,p,s) {
+        const Set = function(i, p, s) {
             return function(e) {
                 e.stopPropagation();
                 var blue;
-                if ( (blue = menu.querySelector('[style*="blue"')) ) {
+                if ( (blue = menu.querySelector('[style*="' + (isekai ? 'red' : 'blue') + '"')) ) {
                     blue.style.color = ''; }
-                profile.p = p;
+                profile[isekai + 'p'] = p;
                 if (p) {
-                    profile['s' + p] = s; }
+                    profile[isekai + 's' + profile[isekai + 'p']] = s; }
                 if ( JSON.stringify(profile) != localStorage.HVmbp ) {
                     localStorage.HVmbp = JSON.stringify(profile);
-                    StoreTmp();
                     location.href = location.href; }
-                i.style.color = 'blue'; };};
+                i.style.color = isekai ? 'red' : 'blue'; };};
         menu.id = 'mbprofile';
         menu.className = 'fc4 fal fcb';
         var base = menu.appendChild(document.createElement('div')), blue = false;
-        base.innerHTML = cfg.name;
         base.onclick = Set(base, 0, 0);
-        for ( var i = 0; i < cfg.persona.length; i++ ) {
-            if ( regexp.profile.test(JSON.stringify(cfg.persona[i])) ) {
-                var persona = menu.appendChild(document.createElement('div'));
-                persona.innerHTML = '- ' + cfg.persona[i].name;
-                persona.onclick = Set(persona, i+1, 0);
-                for ( var j = 0; j < cfg.persona[i].set.length; j++ ) {
-                    if ( regexp.profile.test(JSON.stringify(cfg.persona[i].set[j])) ) {
-                        var set = menu.appendChild(document.createElement('div'));
-                        set.innerHTML = '-- ' + cfg.persona[i].set[j].name;
-                        set.onclick = Set(set, i+1, j+1);
-                        if ( profile.p == i+1 && profile['s' + profile.p] == j+1 ) {
-                            set.style.color = 'blue';
-                            blue = true; }}}
-                if ( profile.p == i+1 && (!blue || profile['s' + profile.p] == 0) ) {
-                    persona.style.color = 'blue';
-                    blue = true; }}}
-        if ( !blue || profile.p == 0 ) {
-            base.style.color = 'blue'; }}}
+        if ( !isekai ) {
+            base.innerHTML = cfg.name;
+            for ( var i = 0; i < cfg.persona.length; i++ ) {
+                if ( regexp.profile.test(JSON.stringify(cfg.persona[i])) ) {
+                    var persona = menu.appendChild(document.createElement('div'));
+                    persona.innerHTML = '- ' + cfg.persona[i].name;
+                    persona.onclick = Set(persona, i+1, 0);
+                    for ( var j = 0; j < cfg.persona[i].set.length; j++ ) {
+                        if ( regexp.profile.test(JSON.stringify(cfg.persona[i].set[j])) ) {
+                            var set = menu.appendChild(document.createElement('div'));
+                            set.innerHTML = '-- ' + cfg.persona[i].set[j].name;
+                            set.onclick = Set(set, i+1, j+1);
+                            if ( profile.p == i+1 && profile['s' + profile.p] == j+1 ) {
+                                set.style.color = 'blue';
+                                blue = true; }}}
+                    if ( profile.p == i+1 && (!blue || profile['s' + profile.p] == 0) ) {
+                        persona.style.color = 'blue';
+                        blue = true; }}}
+            if ( !blue || profile.p == 0 ) {
+                base.style.color = 'blue'; }}
+        else {
+            base.innerHTML = cfg.isekai.name;
+            for ( i = 0; i < cfg.isekai.persona.length; i++ ) {
+                hasisk = regexp.profile.test(JSON.stringify(cfg.isekai.persona[i]));
+                hasper = regexp.profile.test(JSON.stringify(cfg.persona[i])) && cfg.isekaiInherit;
+                if ( hasisk || hasper ) {
+                    persona = menu.appendChild(document.createElement('div'));
+                    persona.innerHTML = '- ' + (hasisk ? cfg.isekai.persona[i].name : cfg.persona[i].name);
+                    persona.onclick = Set(persona, i+1, 0);
+                    for ( j = 0; j < cfg.isekai.persona[i].set.length; j++ ) {
+                        hasisk = regexp.profile.test(JSON.stringify(cfg.isekai.persona[i].set[j]));
+                        hasper = regexp.profile.test(JSON.stringify(cfg.persona[i].set[j])) && cfg.isekaiInherit;
+                        if ( hasisk || hasper ) {
+                            set = menu.appendChild(document.createElement('div'));
+                            set.innerHTML = '-- ' + (hasisk ? cfg.isekai.persona[i].set[j].name : cfg.persona[i].set[j].name);
+                            set.onclick = Set(set, i+1, j+1);
+                            if ( profile.ip == i+1 && profile['is' + profile.ip] == j+1 ) {
+                                set.style.color = 'red';
+                                blue = true; }}}
+                    if ( profile.ip == i+1 && (!blue || profile['is' + profile.ip] == 0) ) {
+                        persona.style.color = 'red';
+                        blue = true; }}}
+            if ( !blue || profile.ip == 0 ) {
+                base.style.color = 'red'; }}}}
 
 function TrackDrops() {
     if ( (!cfg.trackDrops && !cfg.trackProficiency && !cfg.proficiencySidebar) || !document.getElementById('btcp') ) return;
     if ( cfg.trackDrops ) {
-        var drops = log.getElementsByTagName('span'), n = drops.length, crystal, crystals, credit, exp, proficiencies, proficiency, prof;
+        var reward = turn.match(regexp.reward);
+        if ( reward && (reward = parseInt(reward[1])) ) {
+            droplog.Credit = (droplog.Credit ? droplog.Credit : 0) + reward; }
+        var drops = turn.match(regexp.drops);
+        if ( !drops ) drops = [];
+        var n = drops.length, crystal, crystals, credit, exp, proficiencies, proficiency, prof;
         while ( n-- > 0 ) {
-            var style = drops[n].getAttribute('style'), text = drops[n].innerHTML.match(regexp.drop)[1];
-            if ( (crystal = text.match(regexp.crystal)) ) {
-                droplog.Crystal = (droplog.Crystal ? droplog.Crystal : 0) + parseInt(crystal[1] || 1);
-                if ( cfg.detailedCrystlog && (crystals = text.match(regexp.crystals)) ) {
-                    droplog.Crystals[crystals[0]] = (droplog.Crystals[crystals[0]] ? droplog.Crystals[crystals[0]] : 0) + parseInt(crystal[1] || 1); }}
-            else if ( (credit = text.match(regexp.credit)) ) {
-                droplog.Credit = (droplog.Credit ? droplog.Credit : 0) + parseInt(credit[1]); }
-            else if ( style.indexOf('FF0000') > -1 ) {
+            var drop = drops[n].match(regexp.drop);
+            if ( drop[2] == 'BA05B4' && (crystal = drop[3].match(regexp.crystal)) ) {
+                droplog.Crystal = (droplog.Crystal ? droplog.Crystal : 0) + (parseInt(crystal[1]) || 1);
+                if ( cfg.detailedCrystlog && (crystals = drop[3].match(regexp.crystals)) ) {
+                    droplog.Crystals[crystals[0]] = (droplog.Crystals[crystals[0]] ? droplog.Crystals[crystals[0]] : 0) + (parseInt(crystal[1]) || 1); }}
+            else if (drop[2] == 'A89000' && (credit = drop[3].match(regexp.credit)) ) {
+                droplog.Credit = (droplog.Credit ? droplog.Credit : 0) + (parseInt(credit[1]) || 1); }
+            else if ( drop[2] == 'FF0000' && !drop[4] && regexp.quality[8].test(drop[0]) ) {
                 var tracked = false;
-                if ( (tracked = cfg.equipmentCutoff > 0 && text.indexOf('Peerless') > -1) ) {
+                if ( (tracked = cfg.equipmentCutoff > 0 && drop[3].indexOf('Peerless') > -1) ) {
                     droplog.Peerless = (droplog.Peerless ? droplog.Peerless : 0) + 1; }
-                else if ( (tracked = cfg.equipmentCutoff > 1 && text.indexOf('Legendary') > -1) ) {
+                else if ( (tracked = cfg.equipmentCutoff > 1 && drop[3].indexOf('Legendary') > -1) ) {
                     droplog.Legendary = (droplog.Legendary ? droplog.Legendary : 0) + 1; }
-                else if ( (tracked = cfg.equipmentCutoff > 2 && text.indexOf('Magnificent') > -1) ) {
+                else if ( (tracked = cfg.equipmentCutoff > 2 && drop[3].indexOf('Magnificent') > -1) ) {
                     droplog.Magnificent = (droplog.Magnificent ? droplog.Magnificent : 0) + 1; }
-                else if ( (tracked = cfg.equipmentCutoff > 3 && text.indexOf('Exquisite') > -1) ) {
+                else if ( (tracked = cfg.equipmentCutoff > 3 && drop[3].indexOf('Exquisite') > -1) ) {
                     droplog.Exquisite = (droplog.Exquisite ? droplog.Exquisite : 0) + 1; }
-                else if ( (tracked = cfg.equipmentCutoff > 4 && text.indexOf('Superior') > -1) ) {
+                else if ( (tracked = cfg.equipmentCutoff > 4 && drop[3].indexOf('Superior') > -1) ) {
                     droplog.Superior = (droplog.Superior ? droplog.Superior : 0) + 1; }
-                else if ( (tracked = cfg.equipmentCutoff > 5 && text.indexOf('Average') > -1) ) {
+                else if ( (tracked = cfg.equipmentCutoff > 5 && drop[3].indexOf('Average') > -1) ) {
                     droplog.Average = (droplog.Average ? droplog.Average : 0) + 1; }
-                else if ( (tracked = cfg.equipmentCutoff > 6 && text.indexOf('Fair') > -1) ) {
+                else if ( (tracked = cfg.equipmentCutoff > 6 && drop[3].indexOf('Fair') > -1) ) {
                     droplog.Fair = (droplog.Fair ? droplog.Fair : 0) + 1; }
-                else if ( (tracked = cfg.equipmentCutoff > 7 && text.indexOf('Crude') > -1) ) {
+                else if ( (tracked = cfg.equipmentCutoff > 7 && drop[3].indexOf('Crude') > -1) ) {
                     droplog.Crude = (droplog.Crude ? droplog.Crude : 0) + 1; }
                 else {
                     droplog.Equipment = (droplog.Equipment ? droplog.Equipment : 0) + 1; }
                 if ( cfg.detailedDroplog && tracked ) {
-                    droplog.Equips[text] = (droplog.Equips[text] ? droplog.Equips[text] : 0) + 1; }}
-            else if ( text.indexOf('Chaos') > -1 ) {
+                    droplog.Equips[drop[3]] = (droplog.Equips[drop[3]] ? droplog.Equips[drop[3]] : 0) + 1; }}
+            else if ( drop[2] == 'FF0000' && !drop[4] ) {
+                droplog.Material = (droplog.Material ? droplog.Material : 0) + (parseInt(drop[1]) || 1);
+                if ( cfg.detailedDroplog ) {
+                    droplog.Mats[drop[3]] = (droplog.Mats[drop[3]] ? droplog.Mats[drop[3]] : 0) + (parseInt(drop[1]) || 1); }}
+            else if ( drop[3].indexOf('Chaos') > -1 ) {
                 droplog.Chaos = (droplog.Chaos ? droplog.Chaos : 0) + 1; }
-            else if ( text.indexOf('Blood') > -1 ) {
+            else if ( drop[3].indexOf('Blood') > -1 ) {
                 droplog.Blood = (droplog.Blood ? droplog.Blood : 0) + 1; }
-            else if ( text.indexOf('Soul') > -1 ) {
-                droplog.Soul = (droplog.Soul ? droplog.Soul : 0) + 5; }
-            else if ( text.indexOf('Figurine') > -1 ) {
+            else if ( drop[3].indexOf('Soul') > -1 ) {
+                droplog.Soul = (droplog.Soul ? droplog.Soul : 0) + (drop[1] == 'five' ? 5 : (parseInt(drop[1]) || 1)); }
+            else if ( drop[3].indexOf('Figurine') > -1 ) {
                 droplog.Figurine = (droplog.Figurine ? droplog.Figurine : 0) + 1;
                 if ( cfg.detailedDroplog ) {
-                    droplog.Figurines[text] = (droplog.Figurines[text] ? droplog.Figurines[text] : 0) + 1; }}
-            else if ( style.indexOf('0000FF') > -1 ) {
+                    droplog.Figurines[drop[3]] = (droplog.Figurines[drop[3]] ? droplog.Figurines[drop[3]] : 0) + 1; }}
+            else if ( drop[2] == '0000FF' ) {
                 droplog.Artifact = (droplog.Artifact ? droplog.Artifact : 0) + 1;
                 if ( cfg.detailedDroplog ) {
-                    droplog.Artifacts[text] = (droplog.Artifacts[text] ? droplog.Artifacts[text] : 0) + 1; }}
-            else if ( style.indexOf('461B7E') > -1 ) {
+                    droplog.Artifacts[drop[3]] = (droplog.Artifacts[drop[3]] ? droplog.Artifacts[drop[3]] : 0) + 1; }}
+            else if ( drop[2] == '461B7E' ) {
                 droplog.Trophy = (droplog.Trophy ? droplog.Trophy : 0) + 1;
                 if ( cfg.detailedDroplog ) {
-                    droplog.Trophies[text] = (droplog.Trophies[text] ? droplog.Trophies[text] : 0) + 1; }}
-            else if ( style.indexOf('00B000') > -1 && text.indexOf('Gem') < 0 ) {
+                    droplog.Trophies[drop[3]] = (droplog.Trophies[drop[3]] ? droplog.Trophies[drop[3]] : 0) + 1; }}
+            else if ( drop[2] == '00B000' && drop[3].indexOf('Gem') < 0 ) {
                 droplog.Consumable = (droplog.Consumable ? droplog.Consumable : 0) + 1;
                 if ( cfg.detailedDroplog ) {
-                    droplog.Consumables[text] = (droplog.Consumables[text] ? droplog.Consumables[text] : 0) + 1; }}
-            else if ( style.indexOf('489EFF') > -1 ) {
+                    droplog.Consumables[drop[3]] = (droplog.Consumables[drop[3]] ? droplog.Consumables[drop[3]] : 0) + 1; }}
+            else if ( drop[2] == '489EFF' ) {
                 droplog.Food = (droplog.Food ? droplog.Food : 0) + 1;
                 if ( cfg.detailedDroplog ) {
-                    droplog.Foods[text] = (droplog.Foods[text] ? droplog.Foods[text] : 0) + 1; }}}
+                    droplog.Foods[drop[3]] = (droplog.Foods[drop[3]] ? droplog.Foods[drop[3]] : 0) + 1; }}}
         if ( (exp = log.innerHTML.match(regexp.exp)) ) {
             droplog.EXP = (droplog.EXP ? droplog.EXP : 0) + parseInt(exp[1]); }}
     if ( (cfg.trackProficiency || cfg.proficiencySidebar) && (proficiencies = log.innerHTML.match(regexp.proficiencies)) ) {
         for ( var i = 0; i < proficiencies.length; i++ ) {
             if ( (proficiency = proficiencies[i].match(regexp.proficiency)) && (prof = parseFloat(proficiency[1])) && prof > 0 ) {
-                droplog.proficiency[proficiency[2]] = (droplog.proficiency[proficiency[2]] ? droplog.proficiency[proficiency[2]] : 0) + prof; }}}
-    if ( !cfg.ssd ) {
-        localStorage.HVtrackdrops = JSON.stringify(droplog); }}
+                droplog.proficiency[proficiency[2]] = (droplog.proficiency[proficiency[2]] ? droplog.proficiency[proficiency[2]] : 0) + prof; }}}}
 
 function Profbar() {
     if ( !cfg.proficiencySidebar ) return;
@@ -1916,7 +1886,7 @@ function ShowDrops(end) {
         document.querySelector('img[src$="finishbattle.png"]').setAttribute('onclick', btcp.getAttribute('onclick'));
         btcp.removeAttribute('onclick'); }
     var span, crystal, credit, peerless, legendary, magnificent, exquisite, superior, average, fair, crude, equipment,
-        chaos, blood, soul, artifact, figurine, trophy, consumable, food, exp, turns, startTime;
+        material, chaos, blood, soul, artifact, figurine, trophy, consumable, food, exp, turns, startTime;
     if ( cfg.consoleLog ) {
         console.log(JSON.stringify(combatlog));
         console.log(JSON.stringify(droplog)); }
@@ -1989,6 +1959,18 @@ function ShowDrops(end) {
         span = btcp.appendChild(document.createElement('span'));
         span.className = 'drop equipment';
         span.innerHTML = equipment.toLocaleString() + (cfg.terseLog ? '\t' : 'x ') + (cfg.equipmentCutoff > 0 ? 'Lesser ' : '') + 'Equipment'; }
+    if ( cfg.detailedDroplog ) {
+        for ( var mats in droplog.Mats ) {
+            btcp.appendChild(document.createElement('br'));
+            span = btcp.appendChild(document.createElement('span'));
+            span.className = 'drop equipment';
+            span.innerHTML = droplog.Mats[mats].toLocaleString() + (cfg.terseLog ? '\t' : 'x ') + mats; }}
+    else {
+        if ( (material = droplog.Material) ) {
+            btcp.appendChild(document.createElement('br'));
+            span = btcp.appendChild(document.createElement('span'));
+            span.className = 'drop equipment';
+            span.innerHTML = material.toLocaleString() + (cfg.terseLog ? '\t' : ' ') + 'Material' + (material > 1 && !cfg.terseLog ? 's' : ''); }}
     if ( (chaos = droplog.Chaos) ) {
         btcp.appendChild(document.createElement('br'));
         span = btcp.appendChild(document.createElement('span'));
@@ -2070,10 +2052,11 @@ function ShowDrops(end) {
     if ( cfg.trackSpeed && (turns = timelog.action) && (startTime = timelog.startTime) ) {
         btcp.appendChild(document.createElement('br'));
         btcp.appendChild(document.createElement('br'));
-        var time = Math.round((Date.now() - startTime) / 1000.0),
-            hours = Math.floor(time / 3600),
-            minutes = Math.floor(time / 60) % 60,
-            seconds = time % 60,
+        var time = (Date.now() - startTime) / 1000.0,
+            dtime = Math.round(time),
+            hours = Math.floor(dtime / 3600),
+            minutes = Math.floor(dtime / 60) % 60,
+            seconds = dtime % 60,
             tps = turns / time;
         span = btcp.appendChild(document.createElement('span'));
         span.className = 'speed';
@@ -2097,20 +2080,28 @@ function ShowDamage() {
                 piercing: combatlog.pdealt.piercing || combatlog.mdealt.piercing || combatlog.ptaken.piercing || combatlog.mtaken.piercing,
                 void:     combatlog.pdealt.void || combatlog.mdealt.void || combatlog.ptaken.void || combatlog.mtaken.void,
                 dot:      combatlog.pdealt.dot || combatlog.mdealt.dot,
-                pdealt:   combatlog.pdealt.dot || combatlog.pdealt.hit || combatlog.pdealt.miss,
+                pdealt:   combatlog.pdealt.dot || combatlog.pdealt.hit || combatlog.pdealt.miss || combatlog.pdealt.evade || combatlog.pdealt.parry,
                 mdealt:   combatlog.mdealt.fire || combatlog.mdealt.cold || combatlog.mdealt.elec || combatlog.mdealt.wind ||
-                            combatlog.mdealt.dot || combatlog.mdealt.hit || combatlog.mdealt.miss,
-                ptaken:   combatlog.ptaken.hit || combatlog.ptaken.miss,
-                mtaken:   combatlog.mtaken.hit || combatlog.mtaken.miss,
+                            combatlog.mdealt.dot || combatlog.mdealt.hit || combatlog.mdealt.miss || combatlog.mdealt.evade || combatlog.mdealt.resist,
+                ptaken:   combatlog.ptaken.hit || combatlog.ptaken.miss || combatlog.ptaken.evade || combatlog.ptaken.parry || combatlog.ptaken.block,
+                mtaken:   combatlog.mtaken.hit || combatlog.mtaken.evade || combatlog.mtaken.block,
                 pspirit:  combatlog.ptaken.sfire || combatlog.ptaken.scold || combatlog.ptaken.selec || combatlog.ptaken.swind || combatlog.ptaken.sholy ||
                             combatlog.ptaken.sdark || combatlog.ptaken.scrushing || combatlog.ptaken.sslashing || combatlog.ptaken.spiercing || combatlog.ptaken.svoid,
                 mspirit:  combatlog.mtaken.sfire || combatlog.mtaken.scold || combatlog.mtaken.selec || combatlog.mtaken.swind || combatlog.mtaken.sholy ||
                             combatlog.mtaken.sdark || combatlog.mtaken.scrushing || combatlog.mtaken.sslashing || combatlog.mtaken.spiercing || combatlog.mtaken.svoid,
-                hit:      combatlog.pdealt.hit || combatlog.pdealt.miss || combatlog.mdealt.hit || combatlog.mdealt.miss ||
-                            combatlog.ptaken.hit || combatlog.ptaken.miss || combatlog.mtaken.hit || combatlog.mtaken.miss };
+                hit:      combatlog.pdealt.hit || combatlog.mdealt.hit || combatlog.ptaken.hit || combatlog.mtaken.hit,
+                r50:      combatlog.mdealt.r50 || combatlog.mtaken.r50,
+                r75:      combatlog.mdealt.r75 || combatlog.mtaken.r75,
+                r90:      combatlog.mdealt.r90 || combatlog.mtaken.r90,
+                miss:     combatlog.pdealt.miss || combatlog.mdealt.miss || combatlog.ptaken.miss,
+                evade:    combatlog.pdealt.evade || combatlog.mdealt.evade || combatlog.ptaken.evade || combatlog.mtaken.evade,
+                parry:    combatlog.pdealt.parry || combatlog.ptaken.parry,
+                resist:   combatlog.mdealt.resist,
+                block:    combatlog.ptaken.block || combatlog.mtaken.block };
     if ( !any.pdealt && !any.mdealt && !any.ptaken && !any.mtaken ) return;
     any.dtotal = any.pdealt && any.mdealt;
     any.ttotal = any.ptaken && any.mtaken || any.pspirit || any.mspirit;
+    any.none = any.miss || any.evade || any.parry || any.resist || any.block;
     const Row = function(type) {
             return any[type] ? '</tr><tr><td>' + type + '</td>' +
                 (any.pdealt ? '<td>' + (combatlog.pdealt[type] ? combatlog.pdealt[type].toLocaleString() : '') + '</td>' : '') +
@@ -2132,6 +2123,10 @@ function ShowDamage() {
                 (combatlog[type][s+'crushing'] ? combatlog[type][s+'crushing'] : 0) + (combatlog[type][s+'slashing'] ? combatlog[type][s+'slashing'] : 0) +
                 (combatlog[type][s+'piercing'] ? combatlog[type][s+'piercing'] : 0) + (combatlog[type][s+'void'] ? combatlog[type][s+'void'] : 0) +
                 (combatlog[type][s+'dot'] ? combatlog[type][s+'dot'] : 0); },
+        ColumnNone = function(type) {
+            return (combatlog[type].miss ? combatlog[type].miss : 0) + (combatlog[type].evade ? combatlog[type].evade : 0) +
+                (combatlog[type].parry ? combatlog[type].parry : 0) + (combatlog[type].resist ? combatlog[type].resist : 0) +
+                (combatlog[type].block ? combatlog[type].block : 0); },
         Count = function(type) {
             return '<td>' + type + '</td>' +
                 (any.pdealt ? '<td>' + (combatlog.pdealt[type] ? combatlog.pdealt[type].toLocaleString() : '') + '</td>' : '') +
@@ -2146,9 +2141,13 @@ function ShowDamage() {
                                        (combatlog.ptaken[type] + combatlog.mtaken[type]).toLocaleString() : '') + '</td>' : ''); };
     var total = { pdealt: Column('pdealt', ''), mdealt: Column('mdealt', ''),
                   ptaken: Column('ptaken', ''), pspirit: Column('ptaken', 's'),
-                  mtaken: Column('mtaken', ''), mspirit: Column('mtaken', 's') };
+                  mtaken: Column('mtaken', ''), mspirit: Column('mtaken', 's'),
+                  pdnone: ColumnNone('pdealt'), mdnone: ColumnNone('mdealt'),
+                  ptnone: ColumnNone('ptaken'), mtnone: ColumnNone('mtaken'), };
     total.dealt = total.pdealt + total.mdealt;
     total.taken = total.ptaken + total.pspirit + total.mtaken + total.mspirit;
+    total.dnone = total.pdnone + total.mdnone;
+    total.tnone = total.ptnone + total.mtnone;
     var damagelog = log.parentNode.insertBefore(document.createElement('table'), log);
     damagelog.id = 'damagelog';
     damagelog.innerHTML = '<tbody><tr><td></td>' +
@@ -2168,8 +2167,16 @@ function ShowDamage() {
         (any.ptaken ? '<td>' + total.ptaken.toLocaleString() + '</td>' : '') + (any.pspirit ? '<td>' + total.pspirit.toLocaleString() + '</td>' : '') +
         (any.mtaken ? '<td>' + total.mtaken.toLocaleString() + '</td>' : '') + (any.mspirit ? '<td>' + total.mspirit.toLocaleString() + '</td>' : '') +
         (any.ttotal ? '<td>' + total.taken.toLocaleString() + '</td>' : '') +
-        (any.hit ? '</tr><tr style="border-top:1px solid">' + Count('hit') + '</tr><tr>' + Count('crit') + '</tr><tr>' + Count('miss') : '') +
-        '</tr></tbody>'; }
+        (any.hit ? '</tr><tr style="border-top:1px solid">' + Count('hit') + '</tr><tr>' + Count('crit') +
+        (any.r50 ? '</tr><tr>' + Count('r50') : '') + (any.r75 ? '</tr><tr>' + Count('r75') : '') + (any.r90 ? '</tr><tr>' + Count('r90') : '') : '') +
+        (any.none ? '</tr><tr style="border-top:1px solid">' + (any.miss ? '</tr><tr>' + Count('miss') : '') + (any.evade ? '</tr><tr>' + Count('evade') : '') +
+        (any.parry ? '</tr><tr>' + Count('parry') : '') + (any.resist ? '</tr><tr>' + Count('resist') : '') + (any.block ? '</tr><tr>' + Count('block') : ''): '') +
+        (any.none ? '</tr><tr><td>total</td>' +
+        (any.pdealt ? '<td>' + total.pdnone.toLocaleString() + '</td>' : '') + (any.mdealt ? '<td>' + total.mdnone.toLocaleString() + '</td>' : '') +
+        (any.dtotal ? '<td>' + total.dnone.toLocaleString() + '</td>' : '') +
+        (any.ptaken ? '<td>' + total.ptnone.toLocaleString() + '</td>' : '') + (any.pspirit ? '<td></td>' : '') +
+        (any.mtaken ? '<td>' + total.mtnone.toLocaleString() + '</td>' : '') + (any.mspirit ? '<td></td>' : '') +
+        (any.ttotal ? '<td>' + total.tnone.toLocaleString() + '</td>' : '') : '') + '</tr></tbody>'; }
 
 function ShowUsage() {
     if ( !cfg.trackUsage || JSON.stringify(combatlog.used) == '{}' ) return;
@@ -2205,11 +2212,9 @@ function NoPopup() {
             x.open('GET', document.location.href, true);
             x.send(); };}
     monsterData = {};
-    localStorage.removeItem('HVmonsterData');
+    localStorage.removeItem('HVmonsterData' + isekai);
     if ( cfg.showRound ) {
-        timelog.round++;
-        if ( !cfg.ssd ) {
-            localStorage.HVtimelog = JSON.stringify(timelog); }}
+        timelog.round++; }
     if ( cfg.noPopup && (!cfg.stopOnEquipDrop || !regexp.quality[cfg.equipmentCutoff].test(log.innerHTML)) ) {
         btcp.click(); }
     else {
@@ -2217,28 +2222,28 @@ function NoPopup() {
 
 // main function running out of combat
 function OutOfCombat() {
-    if ( document.getElementById('textlog') || document.getElementById('riddlemaster') ) return;
     DeleteLog();
     ProfileSwitch();
     SettingsLink(); }
 
 // out-of-combat helper functions
 function DeleteLog() {
-    localStorage.removeItem('HVmonsterData');
-    localStorage.removeItem('HVtimelog');
-    localStorage.removeItem('HVvitals');
+    localStorage.removeItem('HVmonsterData' + isekai);
+    localStorage.removeItem('HVtimelog' + isekai);
+    localStorage.removeItem('HVvitals' + isekai);
+    localStorage.removeItem('HVcursor' + isekai);
     if ( cfg.deleteDropLog == 2 || (cfg.deleteDropLog == 1 && document.URL.indexOf('Battle') < 0) ) {
-        localStorage.removeItem('HVtrackdrops'); }
+        localStorage.removeItem('HVtrackdrops' + isekai); }
     if ( cfg.deleteCombatLog == 2 || (cfg.deleteCombatLog == 1 && document.URL.indexOf('Battle') < 0) ) {
-        localStorage.removeItem('HVcombatlog'); }}
+        localStorage.removeItem('HVcombatlog' + isekai); }}
 
 function ProfileSwitch() {
     if ( !cfg.profileAutoswitch ) return;
     var choice;
     if ( (choice = document.querySelector('[name="persona_set"] [selected]')) ) {
-        profile.p = choice.value; }
+        profile[(isekai ? 'i' : '') + 'p'] = choice.value; }
     if ( (choice = document.querySelector(['[src*="equip/set"][src$="_on.png"]'])) ) {
-        profile['s' + profile.p] = parseInt(choice.src.match(regexp.number)); }
+        profile[(isekai ? 'i' : '') + 's' + profile[(isekai ? 'i' : '') + 'p']] = parseInt(choice.src.match(regexp.number)); }
     if ( JSON.stringify(profile) != localStorage.HVmbp ) {
         localStorage.HVmbp = JSON.stringify(profile); }}
 
@@ -2249,8 +2254,8 @@ function SettingsLink() {
         link = div.appendChild(document.createElement('div')),
         def = regexp.defaultletter.test(character.innerHTML);
     document.head.appendChild(document.createElement('style')).innerHTML = '#mbsettings { cursor: pointer; }' +
-        '#mbsettings:hover #mbprofile { visibility: visible; } #mbprofile { visibility: hidden; position: absolute; left: ' + (def ? '227' : '179') +
-        'px; top: 177px; width: max-content; height: max-content; padding: 5px; background: #EDEBDF; border: 1px solid #5C0D11; }';
+        '#mbsettings:hover #mbprofile { visibility: visible; } #mbprofile { visibility: hidden; position: relative; left: ' + (def ? '223' : '175') +
+        'px; top: -' + (def ? '9' : '25') + 'px; display: block; width: max-content; height: max-content; padding: 5px; background: #EDEBDF; border: 1px solid #5C0D11; }';
     div.id = 'mbsettings';
     link.onclick = Settings;
     link.className = def ? 'fl f4b' : 'fc4 fal fcb';
@@ -2280,75 +2285,101 @@ function SettingsLink() {
         link.appendChild(document.createElement('div')).className = 'c5s'; }
     else {
         link.appendChild(document.createElement('div')).innerHTML = 'Monsterbation Settings'; }
-    if ( regexp.profile.test(JSON.stringify(cfg.persona)) ) {
+    var hasper = regexp.profile.test(JSON.stringify(cfg.persona));
+    var hasisk = regexp.profile.test(JSON.stringify(cfg.isekai.persona)) || (hasper && cfg.isekaiInherit);
+    if ( (!isekai && hasper) || (isekai && hasisk) ) {
         var menu = div.appendChild(document.createElement('div'));
-        const Set = function(i,p,s) {
+        const Set = function(i, p, s) {
             return function() {
                 var blue;
-                if ( (blue = menu.querySelector('[style*="blue"')) ) {
+                if ( (blue = menu.querySelector('[style*="' + (isekai ? 'red' : 'blue') + '"')) ) {
                     blue.style.color = ''; }
-                profile.p = p;
+                profile[isekai + 'p'] = p;
                 if (p) {
-                    profile['s' + p] = s; }
+                    profile[isekai + 's' + profile[isekai + 'p']] = s; }
                 if ( JSON.stringify(profile) != localStorage.HVmbp ) {
                     localStorage.HVmbp = JSON.stringify(profile); }
-                i.style.color = 'blue'; };};
+                i.style.color = isekai ? 'red' : 'blue'; };};
         menu.id = 'mbprofile';
         menu.className = 'fc4 fal fcb';
         var base = menu.appendChild(document.createElement('div')), blue = false;
-        base.innerHTML = cfg.name;
         base.onclick = Set(base, 0, 0);
-        for ( var i = 0; i < cfg.persona.length; i++ ) {
-            if ( regexp.profile.test(JSON.stringify(cfg.persona[i])) ) {
-                var persona = menu.appendChild(document.createElement('div'));
-                persona.innerHTML = '- ' + cfg.persona[i].name;
-                persona.onclick = Set(persona, i+1, 0);
-                for ( var j = 0; j < cfg.persona[i].set.length; j++ ) {
-                    if ( regexp.profile.test(JSON.stringify(cfg.persona[i].set[j])) ) {
-                        var set = menu.appendChild(document.createElement('div'));
-                        set.innerHTML = '-- ' + cfg.persona[i].set[j].name;
-                        set.onclick = Set(set, i+1, j+1);
-                        if ( profile.p == i+1 && profile['s' + profile.p] == j+1 ) {
-                            set.style.color = 'blue';
-                            blue = true; }}}
-                if ( profile.p == i+1 && (!blue || profile['s' + profile.p] == 0) ) {
-                    persona.style.color = 'blue';
-                    blue = true; }}}
-        if ( !blue || profile.p == 0 ) {
-            base.style.color = 'blue'; }}}
+        if ( !isekai ) {
+            base.innerHTML = cfg.name;
+            for ( var i = 0; i < cfg.persona.length; i++ ) {
+                if ( regexp.profile.test(JSON.stringify(cfg.persona[i])) ) {
+                    var persona = menu.appendChild(document.createElement('div'));
+                    persona.innerHTML = '- ' + cfg.persona[i].name;
+                    persona.onclick = Set(persona, i+1, 0);
+                    for ( var j = 0; j < cfg.persona[i].set.length; j++ ) {
+                        if ( regexp.profile.test(JSON.stringify(cfg.persona[i].set[j])) ) {
+                            var set = menu.appendChild(document.createElement('div'));
+                            set.innerHTML = '-- ' + cfg.persona[i].set[j].name;
+                            set.onclick = Set(set, i+1, j+1);
+                            if ( profile.p == i+1 && profile['s' + profile.p] == j+1 ) {
+                                set.style.color = 'blue';
+                                blue = true; }}}
+                    if ( profile.p == i+1 && (!blue || profile['s' + profile.p] == 0) ) {
+                        persona.style.color = 'blue';
+                        blue = true; }}}
+            if ( !blue || profile.p == 0 ) {
+                base.style.color = 'blue'; }}
+        else {
+            base.innerHTML = cfg.isekai.name;
+            for ( i = 0; i < cfg.isekai.persona.length; i++ ) {
+                hasisk = regexp.profile.test(JSON.stringify(cfg.isekai.persona[i]));
+                hasper = regexp.profile.test(JSON.stringify(cfg.persona[i])) && cfg.isekaiInherit;
+                if ( hasisk || hasper ) {
+                    persona = menu.appendChild(document.createElement('div'));
+                    persona.innerHTML = '- ' + (hasisk ? cfg.isekai.persona[i].name : cfg.persona[i].name);
+                    persona.onclick = Set(persona, i+1, 0);
+                    for ( j = 0; j < cfg.isekai.persona[i].set.length; j++ ) {
+                        hasisk = regexp.profile.test(JSON.stringify(cfg.isekai.persona[i].set[j]));
+                        hasper = regexp.profile.test(JSON.stringify(cfg.persona[i].set[j])) && cfg.isekaiInherit;
+                        if ( hasisk || hasper ) {
+                            set = menu.appendChild(document.createElement('div'));
+                            set.innerHTML = '-- ' + (hasisk ? cfg.isekai.persona[i].set[j].name : cfg.persona[i].set[j].name);
+                            set.onclick = Set(set, i+1, j+1);
+                            if ( profile.ip == i+1 && profile['is' + profile.ip] == j+1 ) {
+                                set.style.color = 'red';
+                                blue = true; }}}
+                    if ( profile.ip == i+1 && (!blue || profile['is' + profile.ip] == 0) ) {
+                        persona.style.color = 'red';
+                        blue = true; }}}
+            if ( !blue || profile.ip == 0 ) {
+                base.style.color = 'red'; }}}}
 
-function LoadCfg(p,s) {
+function LoadCfg(p, s, i) {
     var local, value;
     if ( settings.cfgInterface && (local = localStorage.HVmbcfg) ) {
         local = JSON.parse(local); }
     var persona = local && local.persona ? local.persona : settings.persona;
+    var isk = local && local.isekai ? local.isekai : settings.isekai;
     for ( var setting in settings ) {
-        cfg[setting] = p && s && ((value = persona[p-1].set[s-1].settings[setting]) || value === false || value === 0) ? value :
-                       (p && ((value = persona[p-1].settings[setting]) || value === false || value === 0) ? value :
-                       (local && ((value = local[setting]) || value === false || value === 0) ? value : settings[setting]));
-        if ( typeof(settings[setting]) == 'object' ) {
+        cfg[setting] = i && p && s && ((value = isk.persona[p-1].set[s-1].settings[setting]) || value === false || value === 0) ? value :
+                       ((!i || cfg.isekaiInherit) && p && s && ((value = persona[p-1].set[s-1].settings[setting]) || value === false || value === 0) ? value :
+                       (i && p && ((value = isk.persona[p-1].settings[setting]) || value === false || value === 0) ? value :
+                       ((!i || cfg.isekaiInherit) && p && ((value = persona[p-1].settings[setting]) || value === false || value === 0) ? value :
+                       (i && ((value = isk.settings[setting]) || value === false || value === 0) ? value :
+                       (local && ((value = local[setting]) || value === false || value === 0) ? value : settings[setting])))));
+        if ( typeof(settings[setting]) == 'object' && !(settings[setting] instanceof Array) ) {
             for ( var item in settings[setting] ) {
                 if ( !cfg[setting][item] && !(cfg[setting][item] === false) ) {
                     cfg[setting][item] = settings[setting][item]; }}}}
     cfg.bind = cfg.bind.replace(regexp.whitespace,''); }
 
 function StoreTmp() {
-    if ( !cfg.ssd ) return;
-    if ( (cfg.showMonsterHP || cfg.shortenHPbars || cfg.monsterInfo || cfg.submitScans || cfg.monsterKeywords) &&
-          JSON.stringify(monsterData) != '{}' ) {
-        localStorage.HVmonsterData = JSON.stringify(monsterData); }
-    if ( (cfg.showCooldowns || cfg.trackSpeed || cfg.showRound) && JSON.stringify(timelog) != '{ "turn":0,"action":0,"round":1,"lastuse":{} }' ) {
-        localStorage.HVtimelog = JSON.stringify(timelog); }
-    if ( (cfg.trackDamage || cfg.trackUsage) && JSON.stringify(timelog) !=
-          '{ "pdealt":{"hit":0,"crit":0,"miss":0},"mdealt":{"hit":0,"crit":0,"miss":0},' +
-            '"ptaken":{"hit":0,"shit":0,"crit":0,"scrit":0,"miss":0},' +
-            '"mtaken":{"hit":0,"shit":0,"crit":0,"scrit":0,"miss":0},"used":{} }' ) {
-        localStorage.HVcombatlog = JSON.stringify(combatlog); }
-    if ( cfg.maxVitals && JSON.stringify(vitals) != '{ "hp":0,"mp":0,"sp":0 }' && JSON.stringify(vitals) != localStorage.HVvitals ) {
-        localStorage.HVvitals = JSON.stringify(vitals); }
-    if ( (cfg.trackDrops || cfg.trackProficiency || cfg.proficiencySidebar) && JSON.stringify(droplog) !=
-          '{ "Crystals":{}, "Equips":{}, "Artifacts":{}, "Figurines":{}, "Trophies":{}, "Consumables":{}, "Foods":{}, "proficiency":{} }' ) {
-        localStorage.HVtrackdrops = JSON.stringify(droplog); }}
+    if ( (cfg.showMonsterHP || cfg.shortenHPbars || cfg.monsterKeywords) && JSON.stringify(monsterData) != '{}' ) {
+        localStorage['HVmonsterData' + isekai] = JSON.stringify(monsterData); }
+    if ( cfg.showCooldowns || cfg.trackSpeed || cfg.showRound ) {
+        localStorage['HVtimelog' + isekai] = JSON.stringify(timelog); }
+    if ( cfg.trackDamage || cfg.trackUsage ) {
+        localStorage['HVcombatlog' + isekai] = JSON.stringify(combatlog); }
+    if ( cfg.maxVitals && JSON.stringify(vitals) != localStorage['HVvitals' + isekai] ) {
+        localStorage['HVvitals' + isekai] = JSON.stringify(vitals); }
+    if ( cfg.trackDrops || cfg.trackProficiency || cfg.proficiencySidebar ) {
+        localStorage['HVtrackdrops' + isekai] = JSON.stringify(droplog); }
+    if ( cursor >= 0 ) localStorage['HVcursor' + isekai] = cursor; }
 
 // default font parser
 function ParseDefault(div) {
@@ -2357,7 +2388,15 @@ function ParseDefault(div) {
         string += letters[j].match(regexp.defaultletter)[1]; }
     return string; }
 
-LoadCfg(profile.p, profile['s' + profile.p]);
-Enhance();
-document.addEventListener('DOMContentLoaded', Enhance);
-OutOfCombat();
+if ( !profile.p ) { profile.p = 0; }
+if ( !profile.ip ) { profile.ip = 0; }
+for ( var i = 1; i < 10; i++ ) {
+    if ( !profile['s' + i] ) { profile['s' + i] = 0; }
+    if ( !profile['is' + i] ) { profile['is' + i] = 0; }}
+if ( !droplog.Mats ) { droplog.Mats = {}; }
+LoadCfg(profile[isekai + 'p'], profile[isekai + 's' + profile[isekai + 'p']], isekai);
+if ( document.getElementById('textlog') || document.getElementById('riddlemaster') ) {
+    Enhance();
+    document.addEventListener('DOMContentLoaded', Enhance);
+    window.addEventListener('beforeunload', StoreTmp); }
+else { OutOfCombat(); }
