@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Twitter Image Expander
 // @name:zh-CN   推特图片展开
-// @version      0.5
+// @version      0.6
 // @description  Prevents images in the twitter feed from having the top and bottom cropped off
 // @namespace    15x15
 // @author       Ambit,15x15
@@ -82,6 +82,10 @@
     globalStyle.sheet.insertRule(`
         .m-auto-list {
             max-width: 100% !important;
+        }`);
+    globalStyle.sheet.insertRule(`
+        .single-img {
+            max-height: none !important;
         }`);
     function fixImageContainer(container, image) {
         debug(`h: ${image.naturalHeight}, w: ${image.naturalWidth}, container:`, container);
