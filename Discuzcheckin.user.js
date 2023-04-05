@@ -2,7 +2,7 @@
 // @name         Discuzcheckin
 // @name:zh-CN   Discuz签到
 // @namespace    http://tampermonkey.net/
-// @version      0.2.2
+// @version      0.3
 // @description  try to take over the world!
 // @author       15x15
 // @match        https://gmgard.com/
@@ -10,6 +10,7 @@
 // @match        http://www.txtnovel.pro/plugin.php*
 // @match        https://*.yamibo.com/
 // @match        https://*.hifini.com/*
+// @match        https://masiro.me/admin/wishingPondIndex
 // @icon         https://icons.duckduckgo.com/ip2/tsdm39.net.ico
 // @grant        none
 // ==/UserScript==
@@ -37,5 +38,31 @@
 
         showWindow('qwindow', 'qiandao', 'post', '0');
         return;
+    }
+    else if(window.location.href.includes('masiro.me/admin/wishingPondIndex')){
+      $.ajax({
+        type: 'post',
+        url: '/admin/gachiyaWishingPond',
+        dataType: 'json',
+        data: { 'wp_id': 1, 'cost': NaN },
+        success: function (data) {
+          if (data.code == 1) {
+            showND(data.html);
+            $('.yue').html('余额:' + data.money);
+          } else {
+            layer.msg(data.msg, { icon: 2 });
+          }
+        },
+        error: function (data) {
+          if (data.code == 1) {
+            showND(data.html);
+            $('.yue').html('余额:' + data.money);
+          } else if (data.code == -1) {
+            layer.msg(data.msg, { icon: 2 });
+          } else {
+            layer.msg('网络错误，稍后重试!', { icon: 2 });
+          }
+        }
+      })
     }
 })();
