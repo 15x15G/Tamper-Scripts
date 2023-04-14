@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         arrayGame
 // @namespace    15x15
-// @version      0.1
+// @version      0.2
 // @description  try to take over the world!
 // @author       15x15
 // @match        https://demonin.com/games/arrayGame/
@@ -35,6 +35,7 @@
                 // code for "left arrow" key press.
                 break;
             case "q":
+                game.timeOfLastUpdate=game.timeOfLastUpdate-3600000
                 break;
             default:
                 return; // Quit when this doesn't handle the key event.
