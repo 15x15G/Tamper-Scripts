@@ -2,13 +2,14 @@
 // @name         Discuzcheckin
 // @name:zh-CN   Discuz签到
 // @namespace    http://tampermonkey.net/
-// @version      0.5
+// @version      0.6
 // @description  try to take over the world!
 // @author       15x15
 // @match        https://gmgard.com/
 // @match        https://www.tsdm39.net/plugin.php?id=dsu_paulsign:sign
 // @match        https://www.tsdm39.com/plugin.php?id=dsu_paulsign:sign
 // @match        http://www.txtnovel.pro/plugin.php*
+// @match        http://www.txtnovel.vip/plugin.php*
 // @match        https://bbs.yamibo.com/plugin.php?id=zqlj_sign
 // @match        https://*.hifini.com/*
 // @match        https://masiro.me/admin/wishingPondIndex
