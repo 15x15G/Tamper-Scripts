@@ -67,8 +67,19 @@
             }
         })
     }
-    else if(window.location.href.includes('ff14risingstones.web.sdo.com') && document.querySelector("button.signin")?.innerHTML.includes('已签到')==false){
-        document.querySelector("button.signin").click();
-        return;
+    else if(window.location.href.includes('ff14risingstones.web.sdo.com')){
+        let retries = 50;
+        const intervalID = setInterval(_ => {
+            const match = document.querySelector("button.signin");
+            if(match) ffsingin(match);
+            retries--;
+            if(retries == 0 || match) clearInterval(intervalID);
+        }, 100);
+
+        function ffsingin(){
+            if(document.querySelector("button.signin")?.innerHTML.includes('已签到')==false){
+                document.querySelector("button.signin").click();
+            }
+        }
     }
 })();
