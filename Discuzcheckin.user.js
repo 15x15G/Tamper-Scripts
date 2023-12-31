@@ -2,7 +2,7 @@
 // @name         Discuzcheckin
 // @name:zh-CN   Discuz签到
 // @namespace    http://tampermonkey.net/
-// @version      0.7
+// @version      0.8
 // @description  try to take over the world!
 // @author       15x15
 // @match        https://gmgard.com/
