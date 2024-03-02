@@ -2,7 +2,7 @@
 // @name         Discuzcheckin
 // @name:zh-CN   Discuz签到
 // @namespace    http://tampermonkey.net/
-// @version      0.8
+// @version      0.9
 // @description  try to take over the world!
 // @author       15x15
 // @match        https://gmgard.com/
@@ -21,7 +21,7 @@
 (function() {
     'use strict';
     if(window.location.href.includes('hifini') && $("#sign").text()=="签到"){
-        $("#sg_sign").click();
+        setTimeout(function(){$("#sg_sign").click();},1000);
     }
     else if(window.location.href.includes('yamibo') && document.querySelector('div.bm.signbtn.cl > a')?.innerHTML.includes("已打卡")==false){
         document.querySelector('div.bm.signbtn.cl > a').click();
